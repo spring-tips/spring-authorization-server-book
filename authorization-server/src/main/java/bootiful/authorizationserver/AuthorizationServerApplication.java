@@ -18,7 +18,7 @@ public class AuthorizationServerApplication {
         var userBuilder = User.withDefaultPasswordEncoder();
         return new InMemoryUserDetailsManager(
                 userBuilder.roles("USER").username("jlong").password("password").build(),
-                userBuilder.roles("USER", "ADMIN").username("rwinch").password("password").build()
+                userBuilder.roles("USER", "ADMIN").username("rwinch").password("p@ssw0rd").build()
         );
     }
 
