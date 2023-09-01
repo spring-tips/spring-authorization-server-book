@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 @SpringBootApplication
@@ -56,17 +55,16 @@ class CustomerHttpController {
 @ResponseBody
 class EmailController {
 
-    @PostMapping("/email")
-    Map<String, Object> email(@AuthenticationPrincipal Jwt jwt, @RequestParam Integer customerId) {
-        debug(jwt);
-        return Map.of("customerId", customerId, "sent", true);
+    private record EmailSentStatus(String subject, Collection<String> scopes, Integer customerId, boolean sent) {
     }
 
-    private static void debug(Jwt jwt) {
-        System.out.println("--------------------");
-        System.out.println(jwt.getSubject());
-        var scopes = (List<String>) jwt.getClaims().get("scope");
-        scopes.forEach(System.out::println);
+    @PostMapping("/email")
+    EmailSentStatus email(@AuthenticationPrincipal Jwt jwt, @RequestParam Integer customerId) {
+        return new EmailSentStatus(
+                jwt.getSubject(),
+                (Collection<String>) jwt.getClaims().get("scope"),
+                customerId, true
+        );
     }
 }
 
