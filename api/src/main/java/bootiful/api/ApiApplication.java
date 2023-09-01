@@ -1,9 +1,19 @@
 package bootiful.api;
 
+import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.repository.ListCrudRepository;
+import org.springframework.integration.amqp.dsl.Amqp;
+import org.springframework.integration.dsl.DirectChannelSpec;
+import org.springframework.integration.dsl.IntegrationFlow;
+import org.springframework.integration.dsl.MessageChannels;
+import org.springframework.integration.json.ObjectToJsonTransformer;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -51,24 +61,57 @@ class CustomerHttpController {
     }
 }
 
+@Configuration
+class EmailRequestsIntegrationFlowConfiguration {
+
+    private final String destinationName = "emails";
+
+    @Bean
+    IntegrationFlow emailRequestsIntegrationFlow(AmqpTemplate template) {
+        var outboundAmqpAdapter = Amqp
+                .outboundAdapter(template)
+                .routingKey(this.destinationName);
+        return IntegrationFlow
+                .from(requests())
+                .transform(new ObjectToJsonTransformer())
+                .handle(outboundAmqpAdapter)
+                .get();
+    }
+
+    @Bean
+    DirectChannelSpec requests() {
+        return MessageChannels.direct();
+    }
+}
+
 @Controller
 @ResponseBody
 class EmailController {
 
-    private record EmailSentStatus(String subject, Collection<String> scopes, Integer customerId, boolean sent) {
+    private final MessageChannel requests;
+
+    private final CustomerRepository repository;
+
+    EmailController(CustomerRepository repository, MessageChannel requests) {
+        this.requests = requests;
+        this.repository = repository;
     }
 
     @PostMapping("/email")
-    EmailSentStatus email(@AuthenticationPrincipal Jwt jwt, @RequestParam Integer customerId) {
-        return new EmailSentStatus(
-                jwt.getSubject(),
-                (Collection<String>) jwt.getClaims().get("scope"),
-                customerId, true
-        );
+    Map<String, Object> email(@AuthenticationPrincipal Jwt jwt, @RequestParam Integer customerId) {
+        var token = jwt.getTokenValue();
+        var message = MessageBuilder
+                .withPayload(repository.findCustomerById(customerId))
+                .setHeader("Authorization", token)
+                .build();
+        var sent = this.requests.send(message);
+        return Map.of("sent", sent, "customerId", customerId);
     }
 }
 
 interface CustomerRepository extends ListCrudRepository<Customer, Integer> {
+
+    Customer findCustomerById(Integer id);
 }
 
 record Customer(@Id Integer id, String name, String email) {
