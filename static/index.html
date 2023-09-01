@@ -21,18 +21,25 @@
     const root = '/api';
 
     async function getCustomers() {
-        const response = await fetch(root + '/customers');
-        return await response.json();
+        const response = await fetch(root + '/customers')
+        return await response.json()
     }
 
     async function getMeEndpoint() {
         const response = await fetch(root + '/me')
-        return await response.json();
+        return await response.json()
     }
 
     async function postEmail(customerId) {
-        const response = await fetch(root + '/email?customerId='+ customerId)
-        return await response.json();
+        try {
+            const response = await fetch(root + '/email?customerId=' + customerId, {method: 'POST'})
+            const data =  await response.json()
+            console.log(data)
+            return data
+        }//
+        catch (e) {
+            console.log(e.toString())
+        }
     }
 
     window.addEventListener('load', async (event) => {
@@ -40,17 +47,17 @@
         const customersDiv = document.getElementById('customers')
         const customers = await getCustomers()
         customers.forEach(customer => {
-            const div = document.createElement('div');
-            const customerId = customer.id;
-            const customerName = customer.name;
-            const divId = 'c' + customerId;
+            const div = document.createElement('div')
+            const customerId = customer.id
+            const customerName = customer.name
+            const divId = 'c' + customerId
             div.innerHTML = `
               <button type="button">send email</button>
               <span style = "font-weight: bold"> ${customerId} </span>
               <span> ${customerName}</span>
-            `;
+            `
             div.id = divId
-            customersDiv.appendChild(div);
+            customersDiv.appendChild(div)
             document
                 .querySelector('#' + divId)
                 .addEventListener('click', () => postEmail(customerId))

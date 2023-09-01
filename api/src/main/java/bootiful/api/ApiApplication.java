@@ -9,6 +9,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
@@ -55,16 +56,16 @@ class CustomerHttpController {
 @ResponseBody
 class EmailController {
 
-    @GetMapping("/email")
-    Map<String, Object> email(@AuthenticationPrincipal Jwt token, @RequestParam Integer customerId) {
-        debug(token);
+    @PostMapping("/email")
+    Map<String, Object> email(@AuthenticationPrincipal Jwt jwt, @RequestParam Integer customerId) {
+        debug(jwt);
         return Map.of("customerId", customerId, "sent", true);
     }
 
-    private static void debug(Jwt token) {
+    private static void debug(Jwt jwt) {
         System.out.println("--------------------");
-        System.out.println(token.getSubject());
-        var scopes = (List<String>) token.getClaims().get("scope");
+        System.out.println(jwt.getSubject());
+        var scopes = (List<String>) jwt.getClaims().get("scope");
         scopes.forEach(System.out::println);
     }
 }
