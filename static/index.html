@@ -1,35 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title> 
-     Spring CRM 
+    <title>
+        Spring CRM
     </title>
-    <link rel="stylesheet" href="style.css">
-  </head>
-  <body>
-	 
+    <style>
+        html {
+            line-height: 1.5em;
+        }
+    </style>
+</head>
+<body>
 
 
-    <script> 
-  
-      const root = '/api/';
-      
-      async function fetchCustomers() {
+<script>
+
+    const root = '/api';
+
+    async function getCustomers() {
         const response = await fetch(root + '/customers');
-        const customers = await response.json();
-        return customers;
-      }
+        return await response.json();
+    }
 
-      window.addEventListener ('load' , async (event) =>{
+    async function getMeEndpoint() {
+        const response = await fetch(root + '/me')
+        return await response.json();
+    }
 
-        const customers = await  fetchCustomers ();
-        customers.forEach( customer => console.log (customer.id));
+    async function postEmail(customerId) {
+        const response = await fetch(root + '/email?customerId='+ customerId)
+        return await response.json();
+    }
 
-      })
-    </script>
+    window.addEventListener('load', async (event) => {
+        document.getElementById('me').innerHTML = (await getMeEndpoint()).name;
+        const customersDiv = document.getElementById('customers')
+        const customers = await getCustomers()
+        customers.forEach(customer => {
+            const div = document.createElement('div');
+            const customerId = customer.id;
+            const customerName = customer.name;
+            const divId = 'c' + customerId;
+            div.innerHTML = `
+              <button type="button">send email</button>
+              <span style = "font-weight: bold"> ${customerId} </span>
+              <span> ${customerName}</span>
+            `;
+            div.id = divId
+            customersDiv.appendChild(div);
+            document
+                .querySelector('#' + divId)
+                .addEventListener('click', () => postEmail(customerId))
+        });
+    })
+</script>
 
-  </body>
+<div>welcome, <span style="font-weight: bold" id="me"></span></div>
+<div id="customers"></div>
+
+
+</body>
 </html>
