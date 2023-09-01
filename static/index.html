@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title> 
+     Spring CRM 
+    </title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+	 
+
+
+    <script> 
+  
+      const root = '/api/';
+      
+      async function fetchCustomers() {
+        const response = await fetch(root + '/customers');
+        const customers = await response.json();
+        return customers;
+      }
+
+      window.addEventListener ('load' , async (event) =>{
+
+        const customers = await  fetchCustomers ();
+        customers.forEach( customer => console.log (customer.id));
+
+      })
+    </script>
+
+  </body>
+</html>
