@@ -39,7 +39,7 @@ public class ProcessorApplication {
 
     public static final String RABBITMQ_DESTINATION_NAME = "emails";
 
-    public static final String AUTHORIZATION_HEADER_NAME = "Authorization";
+    public static final String AUTHORIZATION_HEADER_NAME = "jwt";
 
 }
 
@@ -63,6 +63,7 @@ class IntegrationConfiguration {
         return IntegrationFlow
                 .from(requests)//
                 .handle((payload, headers) -> {
+                    System.out.println("------------------------------------------------------------------------------");
                     System.out.println(payload.toString());
                     headers.forEach((key, value) -> System.out.println(key + '=' + value));
                     return null;

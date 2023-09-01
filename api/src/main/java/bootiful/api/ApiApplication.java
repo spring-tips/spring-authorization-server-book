@@ -102,7 +102,7 @@ class EmailController {
         var token = jwt.getTokenValue();
         var message = MessageBuilder
                 .withPayload(repository.findCustomerById(customerId))
-                .setHeader("Authorization", token)
+                .setHeader("jwt", token)
                 .build();
         var sent = this.requests.send(message);
         return Map.of("sent", sent, "customerId", customerId);
