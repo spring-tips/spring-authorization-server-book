@@ -31,15 +31,8 @@
     }
 
     async function postEmail(customerId) {
-        try {
-            const response = await fetch(root + '/email?customerId=' + customerId, {method: 'POST'})
-            const data =  await response.json()
-            console.log(data)
-            return data
-        }//
-        catch (e) {
-            console.log(e.toString())
-        }
+        const response = await fetch(root + '/email?customerId=' + customerId, {method: 'POST'})
+        return await response.json()
     }
 
     window.addEventListener('load', async (event) => {
