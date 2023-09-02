@@ -22,16 +22,16 @@ Having an easy component for your IDP integration is _liberating_. If nothign el
 
 It's Spring, so it of course supports the new-and-novel, but it's also built like all Spring Boot autoconfiguration, with hooks and customization in mind at every step.  
 
-I love it and I love it for helping me to love OAuth. If you only knew the agony I've been subjhected to in learing and weilding OAuth over the years, then you'll know what a thing that is for me to say.
+I love it and I love it for helping me to love OAuth. If you only knew the agony I've been subjected to in learning and welding OAuth over the years, then you'll know what a thing that is for me to say.
 
-And I want you, dear reader, to love OAuth. And the way to do that is to, basically, not care about OAuth. And so we're going to take a journey to production together, with the Spring Authorization Server at our backs, and learn how to weild OAuth (via the amazing Spring Authorization Server) for some common kinds of patterns.
+And I want you, dear reader, to love OAuth. And the way to do that is to, basically, not care about OAuth. And so we're going to take a journey to production together, with the Spring Authorization Server at our backs, and learn how to wield OAuth (via the amazing Spring Authorization Server) for some common kinds of patterns.
 
 
 == Try it out!
 
-Now, before we go too far, try it out! 
+Now, before we get ahead of ourselves, let's try it out! Grab (`git clone`) the https://github.com/spring-tips/spring-authorization-server[code here] to follow along.
 
-* in root, run `docker compose up`
+* in the root folder of the code, run `docker compose up`
 * in `authorization-service`, run `run.sh`
 * in `gateway`, run `run.sh`
 * in `api`, run `run.sh`
@@ -43,12 +43,11 @@ Now, before we go too far, try it out!
 
 Lot's of moving parts, but here's what you need to know: we have a JavaScript/HTML 5 client, a backend HTTP API, and a headless backoffice process, all of which have been secured with the Spring Authorization Server.
 
-Refreshingly simple. Let's dive right into the nitty gritty. I want you building secure systems by the article's end. My goal here is not to cover _every_ possible use case, but to cover some of the typical usecases and introduce progressively more moving parts so that, if at some point you don't see what you need, you know where to reach you to build it yourself. Let's dive right into it!
+Shut everything down, and we'll start from scratch.
+
+Refreshingly simple. Let's dive right into the nitty gritty. I want you building secure systems by the article's end. My goal here is not to cover _every_ possible use case, but to cover some of the typical usecases and introduce progressively more moving parts so that, if at some point you don't see what you need, you know where to reach you to build it yourself.
 
 == Stand up a Spring Authorization Server Instance for Great Good
-
-
-This part's as easy as possible.
 
 Go to the https://start.spring.io[Spring Initialzr (start.spring.io)], specify a group ID and an artifact ID (I chose `bootiful`:`authorization-server`) and add  `OAuth2 Authorization Server` as a dependency. I'd add `GraalVM Native Support` for good measure, but you do you. Open the downloaded project in your IDE. I'm using IntelliJ IDEA, but again, you do you. I ran the following command from the root of the newly unzipped archive: `idea build.gradle`.
 
@@ -57,36 +56,32 @@ You've got a new Spring Boot Authorization Server. We need to specify two things
 
 === Users
 
-Users are pretty straight forward, right? A user is the sum of the username, password, and associated identity  information that is the beating heart of our endeavours. We plug those in in the usual ways, with implementations of Spring Security's `UserDetailsService`. You could implement your own (but I don't recommend it). Here's an example:
+Users are pretty straight forward, right? A user is the sum of the username, password, and associated information attached to the systems' notion of identity. The beating heart of our system.
+
+There are a lot of ways to get this done. The easiest might be to just have one user, the _default_ user, which you can describe using Spring Boot's associated properties, like this:
+
+[source,properties]
+----
+include::authorization-server/snippets/default-user.properties[]
+----
+
+This gets us off the ground, but as soon as you want two or more users, you'll need to specify them a different way. The easiest is probably to define a bean of type   `InMemoryUserDetailsManager`, like this.
 
 [code,java]
 ----
-include::./authorization-server/src/main/java/bootiful/authorizationserver/DumbestUserDetailsService.java[]
+include::./authorization-server/snippets/UserDetailsConfiguration.java[]
 ----
 
-You'd define an instance of it like this:
-
-[code,java]
-----
-include::./authorization-server/snippets/DumbestUserDetailsServiceConfiguration.java[]
-----
-
-
-But, as the name makes so very clear, this is _dumb_. This doesn't handle encrypting the passwords, it's not particularly useful if you've already got an LDAP directory somewhere, etc. There are better ways. And even if all you want to do for the purposes of this example is just to define some users in-memory, there are still better ways, like the `InMemoryUserDetailsManager`, which we'll use instead.
-
-[code,java]
-----
-include::./authorization-server/src/main/java/bootiful/authorizationserver/AuthorizationServerApplication.java[]
-----
-
-We've got two users:
+Thus configured we've got two users:
 
 * `jlong` with password `password` and roles `USER`
 * `rwinch` with password `p@ssw0rd` and roles `USER` and `ADMIN`
 
+This implementation is fine for development as it's all in-memory. In a production system, you'll probably want something more durable. We'll look at those possibilities in a bit.
+
 === OAuth Clients
 
-Clients, on the other hand, define how a program or process interacts with the OAuth IDP (like Spring Authorization Server). Clients correspond more or less to the programs that would like to be allowed to authenticate on behalf of users.
+An OAuth client  defines how a program or process interacts with an OAuth IDP (like Spring Authorization Server). Clients correspond more or less to the programs that would like to be allowed to authenticate on behalf of users.
 
 I have tried to conceive of a clear illustration of clients in a vacuum, but it's not easy. so let's examine a real life example: you stumble upon some website, say Yelp[https://www.yelp.com/], a website that lets you contribute and read reviews about locations - restaurants, businesses, tourist spots, etc. You want to login to see your history. You _could_ create a new account there, going through the whole sign up flow and entering redundant information, but this information could soon become stale. Maybe you change house or email address, or whatever, and you've forgotten to go back to the site and change your information. Yelp know this, so they offer another path forward: `Continue with Google` and `Continue with Apple`.
 
@@ -133,22 +128,61 @@ The simplest way to register clients in the Spring Authorization Server is to us
 
 [source,yaml]
 ----
-include::authorization-server/snippets/application.yaml[]
+include::authorization-server/snippets/registered-clients.yaml[]
 ----
 <1> you can use the https://docs.spring.io/spring-boot/docs/current/reference/html/cli.html[`spring`] CLI to encode a password for the client secret: `spring encodepassword BLAH`, where `BLAH` is the string you want to encode. In our case, the  client ID is `crm` and the client secret is `crm`. (Again, I _know_ it's a terrible password. Don't `@` me!). NB: For complex strings like this, YAML parsing rules can be problematic, so I tend to wrap these things in quotation marks.
 <2> `authorization-grant-types` refers to the use case - web application, mobile, headless backoffice application, etc. - for the authentication flow. https://oauth.net/2/grant-types/[OAuth 2.0 is nothing if not flexible].
 <3> we're building a web application so the expectation is that, once you've authenticated yourself with the Spring Authorization Server, it'll redirect you back to the web application with the token in tow. But where? You specify that here. We haven't looked at the application yet, so this is a bit of foreshadowing, but the redirect URI specified here is designed to line up with Spring Security's OAuth client support, which we'll use on the web application.
 <4> Here we specify which scopes we'd like to be given. We've seen `openid` before, and the other two are arbitrary, and just for demonstration.
 
+At this point, we have a valid Spring Authorization Server, and you're ready to start using it! Run the application in the usual way: `./gradlew bootRun` or `./mvnw spring-boot:run` or just run the main method from your IDE. Congratulations on your first deployment of the Spring Authorization Server. We _could_ stop here, satisfied that we have got _something_ to allow us to handle development chores and start building services. Indeed, if you want to, you can skip ahead and things should work fine.
+
+Eventually, however, you're going to realize you can't leave things as they are - you'll need durable state. As-is, everything is kept in-memory.  It's obviously non-starter to need to deploy a new Spring Authorization  Server every time you add a new client, user, or otherwise. People will want self-service forms by which they can register new users, clients, etc. All existing OAuth tokens would become invalid once you  restart the Spring Authorization Server, too! Indeed, all state related to any successful OAuth authorizations would be forgotten on
+ every restart. The situation's not good, and in the next section, we're going to look at introducing persistence, with JDBC, to get around it.
+
+If you want to carry on using property files, then perhaps consider the Spring Cloud Config Server. It's another piece of Spring Boot-powered middleware that, once stood up, mediates access to configuration files via an HTTP API. The configuration files live in  a  version control system, like Git, which the Spring Cloud Config Server monitors. When the files change, the Spring Cloud Config Server serves up the new configuration data. Even better, the Spring Cloud Config Server can, via the Spring Cloud Bus abstraction, publish notifications to your microservices (like the Spring Authorization Server)  on an event bus like RabbitMQ or Apache Kafka  so that you can automatically reload the new configuration. This works particularly well in tandem with the Spring Cloud's `@RefreshScope`. In such a configuration, the configuration for everything still lives in a `.properties` or `.yaml` file, as it does now, but the files are centralized and can be changed without reloading the Spring Authorization Server. Storing files in a version control system gives us niceties like versioning, auditing, rollbacks, etc., for very  sensitive configuration data. And, going a step further, you can even use the Spring Authorization Server to store data encrypted at rest. For more on these possibilities, check out this https://www.youtube.com/watch?v=aC_siBP8rx8&list=PLgGXSWYM2FpPw8rV0tZoMiJYSCiLhPnOc&index=31[video I did some years ago]. And _all_ of these possibilities are enabled entirely because the Spring Authorization Server is delivered as just another Spring Boot autoconfiguration!
+
+
+=== Persistence with PostgreSQL and JDBC
+
+Spring makes it easy to substitute implementations with polymorphism. It's one of the key reasons we use Spring. And make Spring Boot-based configuration makes this doubly powerful. While the Spring Authorization Server does amazing things out of the box, its real power lay in all the knobs and leavers available to you because it's just another Spring Boot autoconfiguration. We have already acknowledged that keys parts of the Spring Authorization Server defer to in-memory implementations. In this section, we'll swap those, and more, out for implementations using JDBC. We'll use JDBC, but these are just interfaces. If you don't want to use JDBC, then feel free to implement the interfaces for yourself, deferring to whatever underlying storage mechanism you want. Spring Data is your friend...
+
+Before we can get started, we'll need a PostgreSQL database. Some place in which to store our state. In the root of the project, run `docker compose up`.
+
+Now, we're going to need to retool our project to accomodate JDBC, so add the following dependencies to the Gradle build:
+
+[source,groovy]
+----
+	runtimeOnly 'org.postgresql:postgresql'
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+----
+
+Modify `application.properties` or `application.yaml` to point to the newly configured PostgreSQL database with username, schema, and password all set to `postgres`. (Sigh. I can feel Spring Security lead Rob Winch staring at me disapprovingly because of my terribad passwords: I'm trying to demonstrate something here!) Here's the relevant configuration for `application.properties`.
+
+[source,properties]
+----
+spring.datasource.url=jdbc:postgresql://localhost/postgres
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+----
+
+
+==== Users
+
+There are other implementations of the `UserDetailsService` interface that you can use to persist users durably. Thinking from a more operational perspective, it's possible you'd want to dynamically register users dynamically, rather than having to restart the Spring Authorization Server instance after you've updated the source code. Spring Security has an extension  of the `UserDetailsService` interface called `UserDetailsManager` which gives you explicit control over the lifecycle of `UserDetails`: adding, updating, deleting, etc. And, as you might imagine, there's a persistent implementation of this interface called `JdbcUserDetailsManager` that uses JDBC.
+
+
+
+//
+
 Storing things in a property file is convenient, especially during development, but maybe you'd like to dynamically register new clients. Certainly, the  folks working on the Google OAuth clients list don't restart the service every single time someone wants to register a new OAuth client. No, instead the client definitions live in some sort of datastore that can grow dynamically.
 
-If you want to carry on using property files, then perhaps consider the Spring Cloud Config Server. It's another piece of Spring Boot-powered middleware that, once stood up, mediates access to configuration files via an HTTP API. The configuration files live in some sort of version control system, like Git, which the Spring Cloud Config Server monitors. When the files change, the Spring Cloud Config Server serves up the new configuration data. Even better, the Spring Cloud Config Server can, via the Spring Cloud Bus abstraction, publish notifications to your microservices via something like RabbitMQ or Apache Kafka  so that you can automatically reload the new configuration. This works particularly well in tandem with the Spring Cloud `@RefreshScope`. For more on these possibilities, check out this https://www.youtube.com/watch?v=aC_siBP8rx8&list=PLgGXSWYM2FpPw8rV0tZoMiJYSCiLhPnOc&index=31[video I did some years ago]. And _all_ of these possibilities are enabled entirely because the Spring Authorization Server is delivered as just another Spring Boot autoconfiguration!
 
 It's easy enough to do that here, too, with implementations of the `RegisteredClientRepository`. If you want to store things in-memory, you'd use the `InMemoryRegisteredClientRepository`, like this:
 
 [source,java]
 ----
-include::authorization-server/src/main/java/bootiful/authorizationserver/ClientsConfiguration.java[]
+include::authorization-server/snippets/ClientsConfiguration.java[]
 ----
 <1> this client registration  is more or less the same as the client registration specified earlier in  `application.yml`.
 
@@ -176,5 +210,3 @@ public interface RegisteredClientRepository {
 It would be a fairly trivial project to implement alternatives using other persistence mechanisms like MongoDB or Hashicorp Vault.
 
 The obvious advantage of a `RegisteredClientRepository` backed by a persistent store is  that you could build a self-service registration form (or workflow) - just like Google and Apple do -  for your organizations developers to register clients on demand without having to restart anything or manipulate source code.
-
-
