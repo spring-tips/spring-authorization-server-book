@@ -6,11 +6,9 @@ Josh Long <josh@joshlong.com>
 :toc:
 
 
-{author} love the Spring Authorization Server, and want you to love it too. Let's dive right into it.
+{author} loves the Spring Authorization Server, and want you to love it too. Let's dive right into it.
 
 == Introducing the Spring Authorization Server
-
-
 
 Hi, Spring fans! In this installment we're going to look at some patterns and practices for working with the Spring Authorization Server, and with OAuth in general in a Spring Boot-based system. 
 
@@ -45,12 +43,21 @@ Now, before we go too far, try it out!
 
 Lot's of moving parts, but here's what you need to know: we have a JavaScript/HTML 5 client, a backend HTTP API, and a headless backoffice process, all of which have been secured with the Spring Authorization Server.
 
-Refreshingly simple. Let's dive right into the nitty gritty. I want you building secure systems by the article's end. My goal here is not to cover _every_ possible use case, but to cover some of the typical usecases and introduce progressively more moving parts so that you, if at some point you don't see what you need, you know where to reach you to build it yourself. Let's dive right into it! 
+Refreshingly simple. Let's dive right into the nitty gritty. I want you building secure systems by the article's end. My goal here is not to cover _every_ possible use case, but to cover some of the typical usecases and introduce progressively more moving parts so that, if at some point you don't see what you need, you know where to reach you to build it yourself. Let's dive right into it!
 
-## 
+== Stand up a Spring Authorization Server Instance for Great Good
 
 
+This part's easy as can be.
 
+Go to the https://start.spring.io[Spring Initialzr (start.spring.io)], specify a group ID and an artifact ID (I chose `bootiful`:`authorization-server`) and add  `OAuth2 Authorization Server` as a dependency. I'd add `GraalVM Native Support` for good measure, but you do you. Open the downloaded project in your IDE. I'm using IntelliJ IDEA, but again, you do you. I ran the following command from the root of the newly  `idea build.gradle`.
+
+You've got a new project. We need to specify two things: users, and clients. Users are pretty straight forward, right? It's the usernames, passwords, and associated identity  informatio that is the beating heart of our endeavours. We plug those in in the usual ways, with implementations of Spring Security's `UserDetailsService`. You could implement your own, but I don't recommend it. Here's an example:
+
+[code,java]
+----
+include::./authorization-server/src/main/java/bootiful/authorizationserver/DumbestUserDetailsService.java[]
+----
 
 
 
