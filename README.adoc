@@ -59,6 +59,21 @@ You've got a new project. We need to specify two things: users, and clients. Use
 include::./authorization-server/src/main/java/bootiful/authorizationserver/DumbestUserDetailsService.java[]
 ----
 
+You'd define an instance of it like this:
+
+[code,java]
+----
+include::./authorization-server/snippets/DumbestUserDetailsServiceConfiguration.java[]
+----
+
+
+But, as the name makes so very clear, this is _dumb_. This doesn't handle encrypting the passwords, it's not particularly useful if you've already got an LDAP directory somewhere, etc. There are better ways. And even if all you want to do for the purposes of this example is just define some users in-memory, there are still better ways, like the `InMemoryUserDetailsManager`, which we'll use instead.
+
+[code,java]
+----
+include::./authorization-server/src/main/java/bootiful/authorizationserver/AuthorizationServerApplication.java[]
+----
+
 
 
 

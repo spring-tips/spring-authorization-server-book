@@ -1,0 +1,1 @@
+asciidoctor README.adoc && open README.html
