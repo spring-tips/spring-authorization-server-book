@@ -6,7 +6,7 @@ Josh Long <josh@joshlong.com>
 :toc:
 
 
-{author} love the Spring Authorization Server, and want you to love it too. Let's dive right into it.
+{author} love the Spring Authorization Server, and want you to love it too. Let's dive right into it. 
 
 == Introducing the Spring Authorization Server
 
@@ -29,7 +29,7 @@ I love it and I love it for helping me to love OAuth. If you only knew the agony
 And I want you, dear reader, to love OAuth. And the way to do that is to, basically, not care about OAuth. And so we're going to take a journey to production together, with the Spring Authorization Server at our backs, and learn how to weild OAuth (via the amazing Spring Authorization Server) for some common kinds of patterns.
 
 
-== Try it out!
+## Try it out! 
 
 Now, before we go too far, try it out! 
 
