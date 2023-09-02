@@ -539,13 +539,13 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <h2 id="_stand_up_a_spring_authorization_server_instance_for_great_good">Stand up a Spring Authorization Server Instance for Great Good</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>This part&#8217;s easy as can be.</p>
+<p>This part&#8217;s as easy as possible.</p>
 </div>
 <div class="paragraph">
-<p>Go to the <a href="https://start.spring.io">Spring Initialzr (start.spring.io)</a>, specify a group ID and an artifact ID (I chose <code>bootiful</code>:`authorization-server`) and add  <code>OAuth2 Authorization Server</code> as a dependency. I&#8217;d add <code>GraalVM Native Support</code> for good measure, but you do you. Open the downloaded project in your IDE. I&#8217;m using IntelliJ IDEA, but again, you do you. I ran the following command from the root of the newly  <code>idea build.gradle</code>.</p>
+<p>Go to the <a href="https://start.spring.io">Spring Initialzr (start.spring.io)</a>, specify a group ID and an artifact ID (I chose <code>bootiful</code>:`authorization-server`) and add  <code>OAuth2 Authorization Server</code> as a dependency. I&#8217;d add <code>GraalVM Native Support</code> for good measure, but you do you. Open the downloaded project in your IDE. I&#8217;m using IntelliJ IDEA, but again, you do you. I ran the following command from the root of the newly unzipped archive: <code>idea build.gradle</code>.</p>
 </div>
 <div class="paragraph">
-<p>You&#8217;ve got a new project. We need to specify two things: users, and clients. Users are pretty straight forward, right? It&#8217;s the usernames, passwords, and associated identity  informatio that is the beating heart of our endeavours. We plug those in in the usual ways, with implementations of Spring Security&#8217;s <code>UserDetailsService</code>. You could implement your own, but I don&#8217;t recommend it. Here&#8217;s an example:</p>
+<p>You&#8217;ve got a new project. We need to specify two things: <strong>users</strong>, and <strong>clients</strong>. Users are pretty straight forward, right? A user is the sum of the username, password, and associated identity  information that is the beating heart of our endeavours. We plug those in in the usual ways, with implementations of Spring Security&#8217;s <code>UserDetailsService</code>. You could implement your own (but I don&#8217;t recommend it). Here&#8217;s an example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -608,7 +608,7 @@ class DumbestUserDetailsConfiguration {
 </div>
 </div>
 <div class="paragraph">
-<p>But, as the name makes so very clear, this is <em>dumb</em>. This doesn&#8217;t handle encrypting the passwords, it&#8217;s not particularly useful if you&#8217;ve already got an LDAP directory somewhere, etc. There are better ways. And even if all you want to do for the purposes of this example is just define some users in-memory, there are still better ways, like the <code>InMemoryUserDetailsManager</code>, which we&#8217;ll use instead.</p>
+<p>But, as the name makes so very clear, this is <em>dumb</em>. This doesn&#8217;t handle encrypting the passwords, it&#8217;s not particularly useful if you&#8217;ve already got an LDAP directory somewhere, etc. There are better ways. And even if all you want to do for the purposes of this example is just to define some users in-memory, there are still better ways, like the <code>InMemoryUserDetailsManager</code>, which we&#8217;ll use instead.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -640,6 +640,33 @@ public class AuthorizationServerApplication {
 
 }</pre>
 </div>
+</div>
+<div class="paragraph">
+<p>We&#8217;ve got two users:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>jlong</code> with password <code>password</code> and roles <code>USER</code></p>
+</li>
+<li>
+<p><code>rwinch</code> with password <code>p@ssw0rd</code> and roles <code>USER</code> and <code>ADMIN</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Clients, on the other hand, define how a program or process interacts with the OAuth IDP (like Spring Authorization Server). Clients correspond more or less to the programs that would like to be allowed to authenticate on behalf of users.</p>
+</div>
+<div class="paragraph">
+<p>I have tried a number of ways to conceive a clear explanation of clients in a vaacuum, but it&#8217;s not ewasy. so lets examine a real life example: you stumble upon some website, say Yelp[<a href="https://www.yelp.com/" class="bare">https://www.yelp.com/</a>], a website that lets you contribute and read reviews about locations - restaurants, businesses, tourist spots, etc. You want to login to see your history. You <em>could</em> create a new account there, going through the whole sign up flow and entering redundant information, but this information could soon become stale. Maybe you change house or email address, or whatever, and you&#8217;ve forgotten to go back to the site and change your information. Yelp know this, so they offer another path forward: <code>Continue with Google</code> and <code>Continue with Apple</code>.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="images/yelp-signup.png" alt="yelp signup">
+</div>
+</div>
+<div class="paragraph">
+<p>So, if you built a backoffice process, you&#8217;d register a client for that backoffice process. If you built a new web application that you intend to suppoort automatic signin with OAuth, you&#8217;d register a new client for that web application. Clients are associated with a number of things related to how the user will eventually interact with the OAuth protocol: the client ID, and client secret, what types of authentication methods are supported, whether the user should be prompoted with a consent form, what rights each new user that is authenticated should have, and what - in the case of an HTTP client - URI the user should be redirected back to.</p>
 </div>
 </div>
 </div>

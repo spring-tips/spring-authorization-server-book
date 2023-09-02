@@ -48,11 +48,16 @@ Refreshingly simple. Let's dive right into the nitty gritty. I want you building
 == Stand up a Spring Authorization Server Instance for Great Good
 
 
-This part's easy as can be.
+This part's as easy as possible.
 
-Go to the https://start.spring.io[Spring Initialzr (start.spring.io)], specify a group ID and an artifact ID (I chose `bootiful`:`authorization-server`) and add  `OAuth2 Authorization Server` as a dependency. I'd add `GraalVM Native Support` for good measure, but you do you. Open the downloaded project in your IDE. I'm using IntelliJ IDEA, but again, you do you. I ran the following command from the root of the newly  `idea build.gradle`.
+Go to the https://start.spring.io[Spring Initialzr (start.spring.io)], specify a group ID and an artifact ID (I chose `bootiful`:`authorization-server`) and add  `OAuth2 Authorization Server` as a dependency. I'd add `GraalVM Native Support` for good measure, but you do you. Open the downloaded project in your IDE. I'm using IntelliJ IDEA, but again, you do you. I ran the following command from the root of the newly unzipped archive: `idea build.gradle`.
 
-You've got a new project. We need to specify two things: users, and clients. Users are pretty straight forward, right? It's the usernames, passwords, and associated identity  informatio that is the beating heart of our endeavours. We plug those in in the usual ways, with implementations of Spring Security's `UserDetailsService`. You could implement your own, but I don't recommend it. Here's an example:
+You've got a new Spring Boot Authorization Server. We need to specify two things: *users*, and *clients*.
+
+
+=== Users
+
+Users are pretty straight forward, right? A user is the sum of the username, password, and associated identity  information that is the beating heart of our endeavours. We plug those in in the usual ways, with implementations of Spring Security's `UserDetailsService`. You could implement your own (but I don't recommend it). Here's an example:
 
 [code,java]
 ----
@@ -67,23 +72,33 @@ include::./authorization-server/snippets/DumbestUserDetailsServiceConfiguration.
 ----
 
 
-But, as the name makes so very clear, this is _dumb_. This doesn't handle encrypting the passwords, it's not particularly useful if you've already got an LDAP directory somewhere, etc. There are better ways. And even if all you want to do for the purposes of this example is just define some users in-memory, there are still better ways, like the `InMemoryUserDetailsManager`, which we'll use instead.
+But, as the name makes so very clear, this is _dumb_. This doesn't handle encrypting the passwords, it's not particularly useful if you've already got an LDAP directory somewhere, etc. There are better ways. And even if all you want to do for the purposes of this example is just to define some users in-memory, there are still better ways, like the `InMemoryUserDetailsManager`, which we'll use instead.
 
 [code,java]
 ----
 include::./authorization-server/src/main/java/bootiful/authorizationserver/AuthorizationServerApplication.java[]
 ----
 
+We've got two users:
+
+* `jlong` with password `password` and roles `USER`
+* `rwinch` with password `p@ssw0rd` and roles `USER` and `ADMIN`
+
+=== OAuth Clients
+
+Clients, on the other hand, define how a program or process interacts with the OAuth IDP (like Spring Authorization Server). Clients correspond more or less to the programs that would like to be allowed to authenticate on behalf of users.
+
+I have tried a number of ways to conceive a clear explanation of clients in a vaacuum, but it's not ewasy. so lets examine a real life example: you stumble upon some website, say Yelp[https://www.yelp.com/], a website that lets you contribute and read reviews about locations - restaurants, businesses, tourist spots, etc. You want to login to see your history. You _could_ create a new account there, going through the whole sign up flow and entering redundant information, but this information could soon become stale. Maybe you change house or email address, or whatever, and you've forgotten to go back to the site and change your information. Yelp know this, so they offer another path forward: `Continue with Google` and `Continue with Apple`.
 
 
+image::images/yelp-signup.png[]
+
+Click the button and another window on Google or Apple's sites pop up.
+
+image::images/google-signin.png[]
+
+You know what to do here: you're in familiar terriroty. It's google.com! You've got an account here, you maintain that account, and you like that account. You use it for your daily email, after all. You've even got that reassuring little padlock icon in the browser's location bar giving you the warm-n-fuzzies about this site. So you enter your information, login
 
 
-
-
-
-
-
-
-
-
+So, if you built a backoffice process, you'd register a client for that backoffice process. If you built a new web application that you intend to suppoort automatic signin with OAuth, you'd register a new client for that web application. Clients are associated with a number of things related to how the user will eventually interact with the OAuth protocol: the client ID, and client secret, what types of authentication methods are supported, whether the user should be prompoted with a consent form, what rights each new user that is authenticated should have, and what - in the case of an HTTP client - URI the user should be redirected back to.
 
