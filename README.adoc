@@ -1,4 +1,4 @@
-= Building Secure Systems and Services with the Spring Authorization Server, OAuth, and Spring Boot
+= Authorize All the Things with the Spring Authorization Server, OAuth, and Spring Boot
 Josh Long <josh@joshlong.com>
 :reproducible:
 :listing-caption: Listing
@@ -88,7 +88,7 @@ We've got two users:
 
 Clients, on the other hand, define how a program or process interacts with the OAuth IDP (like Spring Authorization Server). Clients correspond more or less to the programs that would like to be allowed to authenticate on behalf of users.
 
-I have tried a number of ways to conceive a clear explanation of clients in a vaacuum, but it's not ewasy. so lets examine a real life example: you stumble upon some website, say Yelp[https://www.yelp.com/], a website that lets you contribute and read reviews about locations - restaurants, businesses, tourist spots, etc. You want to login to see your history. You _could_ create a new account there, going through the whole sign up flow and entering redundant information, but this information could soon become stale. Maybe you change house or email address, or whatever, and you've forgotten to go back to the site and change your information. Yelp know this, so they offer another path forward: `Continue with Google` and `Continue with Apple`.
+I have tried to conceive of a clear illustration of clients in a vacuum, but it's not easy. so let's examine a real life example: you stumble upon some website, say Yelp[https://www.yelp.com/], a website that lets you contribute and read reviews about locations - restaurants, businesses, tourist spots, etc. You want to login to see your history. You _could_ create a new account there, going through the whole sign up flow and entering redundant information, but this information could soon become stale. Maybe you change house or email address, or whatever, and you've forgotten to go back to the site and change your information. Yelp know this, so they offer another path forward: `Continue with Google` and `Continue with Apple`.
 
 
 image::images/yelp-signup.png[]
@@ -97,8 +97,33 @@ Click the button and another window on Google or Apple's sites pop up.
 
 image::images/google-signin.png[]
 
-You know what to do here: you're in familiar terriroty. It's google.com! You've got an account here, you maintain that account, and you like that account. You use it for your daily email, after all. You've even got that reassuring little padlock icon in the browser's location bar giving you the warm-n-fuzzies about this site. So you enter your information, login
+You know what to do here: you're in familiar territory. It's google.com! You know Google. And Google _definitely_  knows you!  You've got an account here, you maintain that account, and you like that account. You use it for your daily email, after all. You've even got that reassuring little padlock icon in the browser's location bar giving you the warm-n-fuzzies about this site's authenticity: it is who it claims to be. So you enter your information, login, and you have to whatever mutli-factor auth things Google wants you to do.
+
+image::images/google-mfa.png[]
+
+This shows up  as a prompt on a completely different device, an iPad.
+
+image::images/google-is-it-you.png[]
+
+You've approved of the login, so that Google knows it really is you logging in, and now it's got to make sure you realize you're  handing over some of the data associated with your identity to this new website, Yelp.com, so it throws up a consent form.
+
+image::images/google-consent-screen.png[]
+
+You click `Confirm` and then are finally logged in, with your Google identity, on Yelp.com
+
+image::images/yelp-logged-in-with-google-part-2.png[]
 
 
-So, if you built a backoffice process, you'd register a client for that backoffice process. If you built a new web application that you intend to suppoort automatic signin with OAuth, you'd register a new client for that web application. Clients are associated with a number of things related to how the user will eventually interact with the OAuth protocol: the client ID, and client secret, what types of authentication methods are supported, whether the user should be prompoted with a consent form, what rights each new user that is authenticated should have, and what - in the case of an HTTP client - URI the user should be redirected back to.
+At the end of this dance, Google.com transmitted a _token_ to the application running at Yelp.com. Armed with this, the application running at Yelp.com can now transmit requests to the Google.com APIs, asking it questions about you, like your email. It might also be able to read your Google calendar events,  location data, etc. What precisely the application at Yelp.com has access to is a function of the _scopes_ requested by the client. The application at Yelp.com stores the token and uses it to interact with Google on your behalf. Occasionally, Google.com will expire the token. Tokens, like milk, go stale! No worries: the application at Yelp.com has a _refresh_ token it can use to refresh the token and get a new one.
+
+You're glad you signed up at Yelp.com, but look at the time, it's noon, the sun's out and the kid wants to go play mini golf at the place you just found on Yelp.com. Gotta go!
+
+Time passes, and you return to Yelp.com a week later. By this point, Yelp.com's expired your HTTP session, and you're logged out. No problem. Click the `Continue with Google` button again, and this time you'll just be dumped into Yelp.com, fully authenticated. Both Google and Yelp remember who you are and so there's no ceremony this time. You got fast-path'd into an authenticated HTTP session on Yelp.com. Thus: OAuth is invaluable both for establishing a new account and for subsequently logging into it. You may have changed your home address on Google.com in the meantime, and now Yelp.com can see the new address information and offer you updated recommendations, too. So Yelp.com is kept up-to-date and all you had to do was keep Google.com up-to-date.
+
+From the perspective of Google, Yelp.com is an OAuth client. All the particulars of how  you went through that authentication flow - whether you  needed to be redirected to Google.com, whether you should be shown a consent form, and what data Yelp.com was allowed to read from the Google.com API once it had a token stemming from this authentication flow, was governed by how the developers at Yelp.com registered their client with Google.
+
+Clients must stipulate a client ID, and a client secret. The client Id and client secret are transmitted in the request initiating the authentication flow, signalling to Google that Yelp.com is making this request. Clients also stipulate what _scopes_ they want. A scope is OAuth's version of rights, permissions, authorities, or claims. They're (basically) arbitrary strings that mean something to Google.com's API. There is one scope, `openid`, which is part of the OIDC specification. This scope means that you want to log in as a user with the OAuth flow. This is a sort of special case; Yelp.com may not want to read   Google Calendar data, or read   email. Those scopes would necessarily be unique to Google's APIs. But login is a common thing, that can be implemented usefully across all sorts of OAuth  providers. Yelp.com might only just need enough information from Google.com to fill out a signup form for us: name, email, etc. In that case, it would just specify `openid` as a scope and call it good.
+
+So, if you built a backoffice process, you'd register a client for that backoffice process. If you built a new web application that you intend to support automatic sign-in with OAuth, you'd register a new client for that web application.
+
 
