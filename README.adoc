@@ -128,5 +128,53 @@ There is one scope, `openid`, which is part of the OIDC specification. This scop
 
 So, if you built a backoffice process, you'd register a client for that backoffice process. If you built a new web application that you intend to support automatic sign-in with OAuth, you'd register a new client for that web application.
 
+The simplest way to register clients in the Spring Authorization Server is to use properties in the `application.properties` or `application.yaml` file, like in this `application.yaml` example:
+
+
+[source,yaml]
+----
+include::authorization-server/snippets/application.yaml[]
+----
+<1> you can use the https://docs.spring.io/spring-boot/docs/current/reference/html/cli.html[`spring`] CLI to encode a password for the client secret: `spring encodepassword BLAH`, where `BLAH` is the string you want to encode. In our case, the  client ID is `crm` and the client secret is `crm`. (Again, I _know_ it's a terrible password. Don't `@` me!). NB: For complex strings like this, YAML parsing rules can be problematic, so I tend to wrap these things in quotation marks.
+<2> `authorization-grant-types` refers to the use case - web application, mobile, headless backoffice application, etc. - for the authentication flow. https://oauth.net/2/grant-types/[OAuth 2.0 is nothing if not flexible].
+<3> we're building a web application so the expectation is that, once you've authenticated yourself with the Spring Authorization Server, it'll redirect you back to the web application with the token in tow. But where? You specify that here. We haven't looked at the application yet, so this is a bit of foreshadowing, but the redirect URI specified here is designed to line up with Spring Security's OAuth client support, which we'll use on the web application.
+<4> Here we specify which scopes we'd like to be given. We've seen `openid` before, and the other two are arbitrary, and just for demonstration.
+
+Storing things in a property file is convenient, especially during development, but maybe you'd like to dynamically register new clients. Certainly, the  folks working on the Google OAuth clients list don't restart the service every single time someone wants to register a new OAuth client. No, instead the client definitions live in some sort of datastore that can grow dynamically.
+
+If you want to carry on using property files, then perhaps consider the Spring Cloud Config Server. It's another piece of Spring Boot-powered middleware that, once stood up, mediates access to configuration files via an HTTP API. The configuration files live in some sort of version control system, like Git, which the Spring Cloud Config Server monitors. When the files change, the Spring Cloud Config Server serves up the new configuration data. Even better, the Spring Cloud Config Server can, via the Spring Cloud Bus abstraction, publish notifications to your microservices via something like RabbitMQ or Apache Kafka  so that you can automatically reload the new configuration. This works particularly well in tandem with the Spring Cloud `@RefreshScope`. For more on these possibilities, check out this https://www.youtube.com/watch?v=aC_siBP8rx8&list=PLgGXSWYM2FpPw8rV0tZoMiJYSCiLhPnOc&index=31[video I did some years ago]. And _all_ of these possibilities are enabled entirely because the Spring Authorization Server is delivered as just another Spring Boot autoconfiguration!
+
+It's easy enough to do that here, too, with implementations of the `RegisteredClientRepository`. If you want to store things in-memory, you'd use the `InMemoryRegisteredClientRepository`, like this:
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/ClientsConfiguration.java[]
+----
+<1> this client registration  is more or less the same as the client registration specified earlier in  `application.yml`.
+
+
+There's also an implementation called `JdbcRegisteredClientRepository` that uses JDBC (the Java Database Connectivity specification) to manage registered clients. The interface is pretty straightforward:
+
+[source,java]
+----
+package org.springframework.security.oauth2.server.authorization.client;
+
+import org.springframework.lang.Nullable;
+
+public interface RegisteredClientRepository {
+
+	void save(RegisteredClient registeredClient);
+
+	@Nullable
+	RegisteredClient findById(String id);
+
+	@Nullable
+	RegisteredClient findByClientId(String clientId);
+}
+----
+
+It would be a fairly trivial project to implement alternatives using other persistence mechanisms like MongoDB or Hashicorp Vault.
+
+The obvious advantage of a `RegisteredClientRepository` backed by a persistent store is  that you could build a self-service registration form (or workflow) - just like Google and Apple do -  for your organizations developers to register clients on demand without having to restart anything or manipulate source code.
 
 

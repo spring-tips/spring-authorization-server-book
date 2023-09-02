@@ -1,0 +1,20 @@
+
+spring:
+  security:
+    oauth2:
+      authorizationserver:
+        client:
+          crm-client:
+            require-authorization-consent: true
+            registration:
+              client-id: crm
+              # <1>
+              client-secret: "{bcrypt}$2a$10$m7dGi0viwVH63EjwZc6UdeUQxPuiVEEdFbZFI9nMxHAASTOIDlaVO"
+              # <2>
+              authorization-grant-types: client_credentials, authorization_code, refresh_token
+              # <3>
+              redirect-uris: http://127.0.0.1:8082/login/oauth2/code/spring
+              # <4>
+              scopes: user.read,user.write,openid
+              # <5>
+              client-authentication-methods: client_secret_basic
