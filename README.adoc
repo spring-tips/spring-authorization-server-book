@@ -110,7 +110,7 @@ We'll look at those possibilities in a bit.
 An OAuth client defines how a program or process interacts with an OAuth IDP (like Spring Authorization Server).
 Clients correspond more or less to the programs that would like to be allowed to authenticate on behalf of users.
 
-I have tried to conceive of a clear illustration of clients in a vacuum, but it's not easy. so let's examine a real life example: you stumble upon some website, say Yelp[https://www.yelp.com/], a website that lets you contribute and read reviews about locations - restaurants, businesses, tourist spots, etc.
+I have tried to conceive of a clear illustration of clients in a vacuum, but it's not easy. so let's examine a real life example: you stumble upon some website, say https://www.yelp.com/[Yelp], a website that lets you contribute and read reviews about locations - restaurants, businesses, tourist spots, etc.
 You want to login to see your history.
 You _could_ create a new account there, going through the whole sign up flow and entering redundant information, but this information could soon become stale.
 Maybe you change house or email address, or whatever, and you've forgotten to go back to the site and change your information.
