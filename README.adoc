@@ -45,11 +45,11 @@ Lot's of moving parts, but here's what you need to know: we have a JavaScript/HT
 
 Shut everything down, and we'll start from scratch.
 
-Refreshingly simple. Let's dive right into the nitty gritty. I want you building secure systems by the article's end. My goal here is not to cover _every_ possible use case, but to cover some of the typical usecases and introduce progressively more moving parts so that, if at some point you don't see what you need, you know where to reach you to build it yourself.
+Refreshingly simple. Let's dive right into the nitty-gritty. I want you building secure systems by the article's end. My goal here is not to cover _every_ possible use case, but to cover some of the typical use-cases and introduce progressively more moving parts so that, if at some point you don't see what you need, you know where to reach you to build it yourself.
 
 == Stand up a Spring Authorization Server Instance for Great Good
 
-Go to the https://start.spring.io[Spring Initialzr (start.spring.io)], specify a group ID and an artifact ID (I chose `bootiful`:`authorization-server`) and add  `OAuth2 Authorization Server` as a dependency. I'd add `GraalVM Native Support` for good measure, but you do you. Open the downloaded project in your IDE. I'm using IntelliJ IDEA, but again, you do you. I ran the following command from the root of the newly unzipped archive: `idea build.gradle`.
+Go to the https://start.spring.io[Spring Initialzr (start.spring.io)], specify a group ID and an artifact ID (I chose `bootiful` : `authorization-server`) and add  `OAuth2 Authorization Server` as a dependency. I'd add `GraalVM Native Support` for good measure, but you do you. Open the downloaded project in your IDE. I'm using IntelliJ IDEA, but again, you do you. I ran the following command from the root of the newly unzipped archive: `idea build.gradle`.
 
 You've got a new Spring Boot Authorization Server. We need to specify two things: *users*, and *clients*.
 
@@ -145,7 +145,7 @@ If you want to carry on using property files, then perhaps consider the Spring C
 
 === Persistence with PostgreSQL and JDBC
 
-Spring makes it easy to substitute implementations with polymorphism. It's one of the key reasons we use Spring. And make Spring Boot-based configuration makes this doubly powerful. While the Spring Authorization Server does amazing things out of the box, its real power lay in all the knobs and leavers available to you because it's just another Spring Boot autoconfiguration. We have already acknowledged that keys parts of the Spring Authorization Server defer to in-memory implementations. In this section, we'll swap those, and more, out for implementations using JDBC. We'll use JDBC, but these are just interfaces. If you don't want to use JDBC, then feel free to implement the interfaces for yourself, deferring to whatever underlying storage mechanism you want. Spring Data is your friend...
+Spring makes it easy to substitute implementations with polymorphism.  _Dependency injection_ is one of the key reasons we use Spring.   Spring Boot-based configuration makes this doubly powerful. While the Spring Authorization Server does amazing things out of the box, its real power lay in all the knobs and leavers available to you because it's just another Spring Boot autoconfiguration. We have already acknowledged that keys parts of the Spring Authorization Server defer to in-memory implementations. In this section, we'll swap those, and more, out for implementations using JDBC. We'll use JDBC, but these are just interfaces. If you don't want to use JDBC, then feel free to implement the interfaces for yourself, deferring to whatever underlying storage mechanism you want. Spring Data is your friend...
 
 Before we can get started, we'll need a PostgreSQL database. Some place in which to store our state. In the root of the project, run `docker compose up`.
 
@@ -164,19 +164,43 @@ Modify `application.properties` or `application.yaml` to point to the newly conf
 spring.datasource.url=jdbc:postgresql://localhost/postgres
 spring.datasource.username=postgres
 spring.datasource.password=postgres
+# <1>
+spring.sql.init.mode=always
+# <2>
+spring.sql.init.schema-locations=classpath:sql/schema/*sql
+# <3>
+spring.sql.init.data-locations=classpath:sql/data/*sql
 ----
-
+<1> This tells Spring Boot to initialize the SQL database with the schema in `src/main/resources/schema.sql` and `src/main/resources/data.sql`. Be sure to disable this property in production!
+<2> This tells Spring Boot to not use `schema.sql` specifically, but to instead use _all_ `.sql` files in `src/main/resources/sql/schema/`. This way, we can keep the various DDL statements separate.
+<3> This tells Spring Boot to not use `data.sql` specifically, but to instead use _all_ `.sql` files in `src/main/resources/sql/data/`. This way, we can keep the inserts separate.
 
 ==== Users
 
 There are other implementations of the `UserDetailsService` interface that you can use to persist users durably. Thinking from a more operational perspective, it's possible you'd want to dynamically register users dynamically, rather than having to restart the Spring Authorization Server instance after you've updated the source code. Spring Security has an extension  of the `UserDetailsService` interface called `UserDetailsManager` which gives you explicit control over the lifecycle of `UserDetails`: adding, updating, deleting, etc. And, as you might imagine, there's a persistent implementation of this interface called `JdbcUserDetailsManager` that uses JDBC.
 
 
+You'll need to install some SQL schema first. Spring Security ships with some usable schema on the classpath, but unfortunately it doesn't work with PostgreSQL, and it's going to fail if there are already table definitions. So we'll modify it accordingly, as shown in `src/main/resources/sql/schema/users.sql`.
 
-//
+[source,sql]
+-----
+include::authorization-server/src/main/resources/sql/schema/users.sql[]
+-----
 
-Storing things in a property file is convenient, especially during development, but maybe you'd like to dynamically register new clients. Certainly, the  folks working on the Google OAuth clients list don't restart the service every single time someone wants to register a new OAuth client. No, instead the client definitions live in some sort of datastore that can grow dynamically.
+We could also define the users with SQL in a file under the `sql/data/` folder, but I want you to see what it looks like to use the Java API to programmatically register a user, so here is both the `UserDetailsService` registration and a bean that uses the `UserDetailsService` to write some data to the database.
 
+[source,java]
+-----
+include::authorization-server/src/main/java/bootiful/authorizationserver/UsersConfiguration.java[]
+-----
+
+
+
+==== Clients
+
+
+
+The `RegisteredClientRepository` interface is trivial and lends itself to implementation with a persistent store.
 
 It's easy enough to do that here, too, with implementations of the `RegisteredClientRepository`. If you want to store things in-memory, you'd use the `InMemoryRegisteredClientRepository`, like this:
 
@@ -184,29 +208,17 @@ It's easy enough to do that here, too, with implementations of the `RegisteredCl
 ----
 include::authorization-server/snippets/ClientsConfiguration.java[]
 ----
-<1> this client registration  is more or less the same as the client registration specified earlier in  `application.yml`.
+<1> this client registration is more or less the same as the client registration specified earlier in  `application.yml`.
 
-
-There's also an implementation called `JdbcRegisteredClientRepository` that uses JDBC (the Java Database Connectivity specification) to manage registered clients. The interface is pretty straightforward:
-
-[source,java]
-----
-package org.springframework.security.oauth2.server.authorization.client;
-
-import org.springframework.lang.Nullable;
-
-public interface RegisteredClientRepository {
-
-	void save(RegisteredClient registeredClient);
-
-	@Nullable
-	RegisteredClient findById(String id);
-
-	@Nullable
-	RegisteredClient findByClientId(String clientId);
-}
-----
+There's also an implementation called `JdbcRegisteredClientRepository` that uses JDBC to manage registered clients.
 
 It would be a fairly trivial project to implement alternatives using other persistence mechanisms like MongoDB or Hashicorp Vault.
 
 The obvious advantage of a `RegisteredClientRepository` backed by a persistent store is  that you could build a self-service registration form (or workflow) - just like Google and Apple do -  for your organizations developers to register clients on demand without having to restart anything or manipulate source code.
+
+There's some schema for the implementation that we also need to take care to use `classpath:org/springframework/security/oauth2/server/authorization/client/oauth2-registered-client-schema.sql`. We could tell Spring Boot to run this directly, but the trouble is that it'll fail on the second run when it executes the same DDL statements and experiences a conflict trying to create something that's already there.  Create a new file `src/main/resources/sql/schema/oauth2-registered-client.sql`.
+
+[source,sql]
+----
+include::authorization-server/src/main/resources/sql/schema/oauth2-registered-client.sql[]
+----
