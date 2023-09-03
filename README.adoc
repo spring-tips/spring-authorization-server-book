@@ -175,6 +175,20 @@ spring.sql.init.data-locations=classpath:sql/data/*sql
 <2> This tells Spring Boot to not use `schema.sql` specifically, but to instead use _all_ `.sql` files in `src/main/resources/sql/schema/`. This way, we can keep the various DDL statements separate.
 <3> This tells Spring Boot to not use `data.sql` specifically, but to instead use _all_ `.sql` files in `src/main/resources/sql/data/`. This way, we can keep the inserts separate.
 
+==== A Brief Note on Passwords
+
+Every time you see a password in the source code of these programs, remember, this is a _demonstration_. There are a million ways to externalize usernames and passwords from the source code and that's going to be up to you to figure out. Every time you see a password, you should tell yourself: that _should've been at the very least an environment variable_! You shouldn't see passwords in `.sql` files, `.yaml`, `.properties`, and especially not in `.java` source code on Github. There are far better solutions including the Spring Cloud Config Server and the Spring Cloud Vault integration.
+
+Also, we're going to need to encode passwords so that they're not lying around at rest in plain text. Define a bean of type `PasswordEncoder` for use in your program.
+
+[source,java]
+-----
+include::authorization-server/src/main/java/bootiful/authorizationserver/SecurityConfiguration.java[]
+-----
+<1> this is a sort of compose `PasswordEncoder`, checking the prefix of the password string for information as to which encoder to use. We've already seen it action. The `spring encodepassword`  CLI command produces a string that starts with `{bcrypt}...`. The default for Spring Security, today, as of this writing, is to use BCrypt. But that may change, and when the   default changes, existing passwords will continue to work because the `PasswordEncoder` will know to look for the prefix and use the older BCrypt encoder when dealing with those older passwords.
+
+We'll use the `PasswordEncoder` more later.
+
 ==== Users
 
 There are other implementations of the `UserDetailsService` interface that you can use to persist users durably. Thinking from a more operational perspective, it's possible you'd want to dynamically register users dynamically, rather than having to restart the Spring Authorization Server instance after you've updated the source code. Spring Security has an extension  of the `UserDetailsService` interface called `UserDetailsManager` which gives you explicit control over the lifecycle of `UserDetails`: adding, updating, deleting, etc. And, as you might imagine, there's a persistent implementation of this interface called `JdbcUserDetailsManager` that uses JDBC.
@@ -193,6 +207,8 @@ We could also define the users with SQL in a file under the `sql/data/` folder, 
 -----
 include::authorization-server/src/main/java/bootiful/authorizationserver/UsersConfiguration.java[]
 -----
+<1> this is a convenient pattern: define the prototype for all new users once and then reuse the builder
+<2> Poor Rob Winch's eyes! why are there passwords just strewn about our Java source code? Remember what we talked about earlier: don't do this in production code!
 
 
 

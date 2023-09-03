@@ -22,8 +22,9 @@ class UsersConfiguration {
     @Bean
     ApplicationRunner usersRunner(PasswordEncoder passwordEncoder, UserDetailsManager userDetailsManager) {
         return args -> {
-
+            // <1>
             var builder = User.builder().roles("USER").passwordEncoder(passwordEncoder::encode);
+            // <2>
             var users = Map.of("jlong", "password", "rwinch", "p@ssw0rd");
             users.forEach((username, password) -> {
                 if (!userDetailsManager.userExists(username)) {
