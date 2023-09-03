@@ -17,11 +17,13 @@ import java.util.UUID;
 @Configuration
 class ClientsConfiguration {
 
+    // <1>
     @Bean
     RegisteredClientRepository registeredClientRepository(JdbcTemplate template) {
         return new JdbcRegisteredClientRepository(template);
     }
 
+    //<2>
     @Bean
     ApplicationRunner clientsRunner(RegisteredClientRepository repository) {
         return args -> {
