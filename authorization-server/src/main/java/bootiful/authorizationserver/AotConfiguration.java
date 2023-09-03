@@ -15,15 +15,15 @@ import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.aot.hint.TypeReference;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ImportRuntimeHints;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
-import org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationServerJackson2Module;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -35,17 +35,6 @@ class AotConfiguration {
 
         @Override
         public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-
-/*            for (var type : Set.of(
-
-                    "org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest",
-                    "org.springframework.security.oauth2.server.authorization.OAuth2Authorization",
-                    "org.springframework.security.core.authority.SimpleGrantedAuthority",
-                    "org.springframework.security.oauth2.core.AuthorizationGrantType" ,
-                    "org.springframework.security.authentication.UsernamePasswordAuthenticationToken",
-                    "org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat"))
-                hints.serialization().registerType(TypeReference.of(type));*/
-
 
             for (var type : List.of(
                     "org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponseType",
@@ -143,13 +132,11 @@ class AotConfiguration {
             for (var folder : Set.of("data", "schema"))
                 hints.resources().registerPattern("sql/" + folder + "/*sql");
 
-
             registerSecurityJacksonModules(hints);
 
         }
 
         private static void registerSecurityJacksonModules(RuntimeHints hints) {
-
 
 
             Set.of(
@@ -343,33 +330,3 @@ class AotConfiguration {
 
 }
 
-
-@Configuration
-class AttributesSerializationConfiguration {
-
-    //    @Bean
-    ApplicationRunner applicationRunner() {
-
-        return args -> {
-
-            var mods = new ArrayList<Module>();
-            mods.addAll(SecurityJackson2Modules.getModules(AotConfiguration.class.getClassLoader()));
-            mods.add(new OAuth2AuthorizationServerJackson2Module());
-            var om = new ObjectMapper();
-            for (var sm : mods)
-                om.registerModule(sm);
-            var data = """
-                    {"@class":"java.util.Collections$UnmodifiableMap","java.security.Principal":{"@class":"org.springframework.security.authentication.UsernamePasswordAuthenticationToken",
-                    "principal":{"@class":"org.springframework.security.core.userdetails.User","password":null,"username":"jlong",
-                    "authorities":["java.util.Collections$UnmodifiableSet",[{"@class":"org.springframework.security.core.authority.SimpleGrantedAuthority","authority":"ROLE_USER"}]],
-                    "accountNonExpired":true,"accountNonLocked":true,"credentialsNonExpired":true,"enabled":true},"credentials":null},
-                    "org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest":{"@class":"org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest"}}
-                     """;
-            var map = om.readValue(data, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
-            });
-            map.forEach((key, value) -> System.out.println(key + '=' + value));
-
-        };
-
-    }
-}
