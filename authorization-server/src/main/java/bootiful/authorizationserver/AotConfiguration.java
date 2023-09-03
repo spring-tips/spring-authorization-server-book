@@ -18,15 +18,23 @@ class AotConfiguration {
         @Override
         public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
 
-            for (var type : Set.of("org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat"))
+            for (var type : Set.of(
+                    "org.springframework.security.core.authority.SimpleGrantedAuthority" ,
+                    "org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat"))
                 hints.serialization().registerType(TypeReference.of(type));
 
 
+
+
             for (var type : Set.of(
+                    "org.springframework.security.authentication.UsernamePasswordAuthenticationToken" ,
+                    "org.springframework.security.core.userdetails.User" ,
+                    "org.springframework.security.web.authentication.WebAuthenticationDetails" ,
+                    "org.springframework.security.core.authority.SimpleGrantedAuthority" ,
                     "org.springframework.security.jackson2.UnmodifiableMapMixin" ,
+                    "org.springframework.security.oauth2.server.authorization.jackson2.OAuth2TokenFormatMixin"  ,
                     "java.time.Duration" ,
                     "org.springframework.security.oauth2.jose.jws.SignatureAlgorithm" ,
-//                    "java.util.Collections.UnmodifiableMap",
                     "java.util.Collections$UnmodifiableMap",
                     "org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat",
                     "org.springframework.security.oauth2.server.authorization.jackson2.UnmodifiableMapDeserializer"))
