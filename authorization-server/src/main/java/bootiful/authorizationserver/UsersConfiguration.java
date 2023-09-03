@@ -4,6 +4,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.provisioning.UserDetailsManager;
 
@@ -19,12 +20,17 @@ class UsersConfiguration {
     }
 
     @Bean
-    ApplicationRunner usersRunner(UserDetailsManager userDetailsManager) {
+    ApplicationRunner usersRunner(PasswordEncoder passwordEncoder, UserDetailsManager userDetailsManager) {
         return args -> {
+
+            var builder = User.builder().roles("USER").passwordEncoder(passwordEncoder::encode);
             var users = Map.of("jlong", "password", "rwinch", "p@ssw0rd");
             users.forEach((username, password) -> {
                 if (!userDetailsManager.userExists(username)) {
-                    var user = User.withUsername(username).roles("USER").password(password).build();
+                    var user = builder
+                            .username(username)
+                            .password(password)
+                            .build();
                     userDetailsManager.createUser(user);
                 }
             });
