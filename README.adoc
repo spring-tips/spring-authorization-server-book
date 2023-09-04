@@ -414,5 +414,5 @@ There is a property, `spring.session.jdbc.initialize-schema=always`, that once s
 include::authorization-server/src/main/resources/sql/schema/spring-session-jdbc.sql[]
 -----
 
-And that's it! Now you can run more than one instance of the Spring Authorization Server behind a load balancer, and no matter to which instance a client and its cookies present themselves, the container will resolve the session from the PostgreSQL database. By the way, is now a good time to remind you not to stash sensitive stuff in the HTTP session? You never know when it's going to be serialized to some datastore...
+And that's it!  Restart the Spring Authorization Server. Now you can run more than one instance of the Spring Authorization Server behind a load balancer, and no matter to which instance a client and its cookies present themselves, the container will resolve the session from the PostgreSQL database. By the way, is now a good time to remind you not to stash sensitive stuff in the HTTP session? You never know when it's going to be serialized to some datastore...
 
