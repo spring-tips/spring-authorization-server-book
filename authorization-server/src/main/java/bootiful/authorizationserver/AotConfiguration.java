@@ -21,6 +21,7 @@ import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import org.springframework.aot.hint.TypeReference;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -326,21 +327,18 @@ class AotConfiguration {
 //@Configuration
 class JsonConfiguration {
 
-    // @Bean
+    @Bean
     ApplicationRunner parse() {
         return a -> {
-            var gaList = new com.fasterxml.jackson.core.type.TypeReference<List<GrantedAuthority>>() {
-            };
+            var gaList = new com.fasterxml.jackson.core.type.TypeReference<List<GrantedAuthority>>() {  };
             var objectMapper = new ObjectMapper();
             var classLoader = JdbcOAuth2AuthorizationService.class.getClassLoader();
             var securityModules = SecurityJackson2Modules.getModules(classLoader);
             objectMapper.registerModules(securityModules);
             objectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
             var json = """
-
-                    {"@class":"java.util.Collections$UnmodifiableMap","org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest":{"@class":"org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest","authorizationUri":"http://localhost:8080/oauth2/authorize","authorizationGrantType":{"value":"authorization_code"},"responseType":{"value":"code"},"clientId":"crm","redirectUri":"http://127.0.0.1:8082/login/oauth2/code/spring","scopes":["java.util.Collections$UnmodifiableSet",["user.read","openid"]],"state":"shZOE2J_HVxAGdHdSbrqKJY6xoYPTHXTpK-_oVh3BqY=","additionalParameters":{"@class":"java.util.Collections$UnmodifiableMap","nonce":"J_gHhZNYPWoZBVEAAL_0fzMpbH0vIWUZuUcmVoy1kks","continue":""},"authorizationRequestUri":"http://localhost:8080/oauth2/authorize?response_type=code&client_id=crm&scope=user.read%20openid&state=shZOE2J_HVxAGdHdSbrqKJY6xoYPTHXTpK-_oVh3BqY%3D&redirect_uri=http://127.0.0.1:8082/login/oauth2/code/spring&nonce=J_gHhZNYPWoZBVEAAL_0fzMpbH0vIWUZuUcmVoy1kks&continue=","attributes":{"@class":"java.util.Collections$UnmodifiableMap"}},"java.security.Principal":{"@class":"org.springframework.security.authentication.UsernamePasswordAuthenticationToken","authorities":["java.util.Collections$UnmodifiableRandomAccessList",[{"@class":"org.springframework.security.core.authority.SimpleGrantedAuthority","authority":"ROLE_USER"}]],"details":{"@class":"org.springframework.security.web.authentication.WebAuthenticationDetails","remoteAddress":"0:0:0:0:0:0:0:1","sessionId":"AF9B71B27FDAC33F05DEB57E325E3FE6"},"authenticated":true,"principal":{"@class":"org.springframework.security.core.userdetails.User","password":null,"username":"jlong","authorities":["java.util.Collections$UnmodifiableSet",[{"@class":"org.springframework.security.core.authority.SimpleGrantedAuthority","authority":"ROLE_USER"}]],"accountNonExpired":true,"accountNonLocked":true,"credentialsNonExpired":true,"enabled":true},"credentials":null}}
-
-                                        """;
+                {"@class":"java.util.Collections$UnmodifiableMap","org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest":{"@class":"org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest","authorizationUri":"http://localhost:8080/oauth2/authorize","authorizationGrantType":{"value":"authorization_code"},"responseType":{"value":"code"},"clientId":"crm","redirectUri":"http://127.0.0.1:8082/login/oauth2/code/spring","scopes":["java.util.Collections$UnmodifiableSet",["user.read","openid"]],"state":"shZOE2J_HVxAGdHdSbrqKJY6xoYPTHXTpK-_oVh3BqY=","additionalParameters":{"@class":"java.util.Collections$UnmodifiableMap","nonce":"J_gHhZNYPWoZBVEAAL_0fzMpbH0vIWUZuUcmVoy1kks","continue":""},"authorizationRequestUri":"http://localhost:8080/oauth2/authorize?response_type=code&client_id=crm&scope=user.read%20openid&state=shZOE2J_HVxAGdHdSbrqKJY6xoYPTHXTpK-_oVh3BqY%3D&redirect_uri=http://127.0.0.1:8082/login/oauth2/code/spring&nonce=J_gHhZNYPWoZBVEAAL_0fzMpbH0vIWUZuUcmVoy1kks&continue=","attributes":{"@class":"java.util.Collections$UnmodifiableMap"}},"java.security.Principal":{"@class":"org.springframework.security.authentication.UsernamePasswordAuthenticationToken","authorities":["java.util.Collections$UnmodifiableRandomAccessList",[{"@class":"org.springframework.security.core.authority.SimpleGrantedAuthority","authority":"ROLE_USER"}]],"details":{"@class":"org.springframework.security.web.authentication.WebAuthenticationDetails","remoteAddress":"0:0:0:0:0:0:0:1","sessionId":"AF9B71B27FDAC33F05DEB57E325E3FE6"},"authenticated":true,"principal":{"@class":"org.springframework.security.core.userdetails.User","password":null,"username":"jlong","authorities":["java.util.Collections$UnmodifiableSet",[{"@class":"org.springframework.security.core.authority.SimpleGrantedAuthority","authority":"ROLE_USER"}]],"accountNonExpired":true,"accountNonLocked":true,"credentialsNonExpired":true,"enabled":true},"credentials":null}}
+            """;
             var jsonNode = objectMapper.readTree(json);
             var authoritiesJsonNode = readJsonNode(jsonNode, "authorities").traverse(objectMapper);
             var authorities = objectMapper.readValue(authoritiesJsonNode, gaList);
