@@ -14,29 +14,35 @@ Hi, Spring fans!
 In this installment we're going to look at some patterns and practices for working with the Spring Authorization Server, and with OAuth in general in a Spring Boot-based system.
 
 The Spring Authorization Server is one of my favorite new projects.
-It's a full blown OAuth identity provider (IDP), distributed as Spring Boot autoconfiguration.
+It's a full-blown OAuth identity provider (IDP), distributed as Spring Boot autoconfiguration.
 
 The Spring Authorization Server is the final piece in the Spring Security OAuth's Ship of Theseus, the final replacement for a component in the built-in OAuth support in Spring Security 5 and later.
 First there was OIDC client support, and then resource server support, and now - after a _lot_ of community outpouring and support - a brand new and fully featured OAuth IDP.
 
-Why not use Keycloak or Okta or Auth0, I hear you ask?
-And the answer is.. be our guest! 99% of the stuff we're going to look at here works with any OAuth IDP.
-But i do so love the Spring Authorization Server.
-I don't know an easier way to get as configurable and flexible IDP up-and-running.
+Why not use Keycloak, Okta, Auth0, ActiveDirectory, or something, I hear you ask? And the answer is.. be our guest! 99% of the stuff we're going to look at here works with any OAuth IDP. But i do so love the Spring Authorization Server. I don't know an easier way to get as configurable and flexible IDP up-and-running.
 
 Having an easy component for your IDP integration is _liberating_.
-If nothign else, it's one less `users` microservice for you to build.
-But, at its best, its a unifying force for your organization's notions of identity and policy, all centralized.
-If you implement it correctly, it's one less `users` microservice for _all_ of your systems, not just the one you're working on now!
+If nothing else, it's one less `users` microservice for you to build.
+But, at its best, it's a unifying force for your organization's notions of identity and policy, all centralized. If you implement it correctly, it's one less `users` microservice for _all_ of your systems, not just the one you're working on now!
 
 It's Spring, so it of course supports the new-and-novel, but it's also built like all Spring Boot autoconfiguration, with hooks and customization in mind at every step.
 
-I love it and I love it for helping me to love OAuth.
-If you only knew the agony I've been subjected to in learning and welding OAuth over the years, then you'll know what a thing that is for me to say.
+I love it and I love it for helping me to love OAuth. If you only knew the agony I've been subjected to in learning and welding OAuth over the years, then you'll know what a thing that is for me to say. And I want you, dear reader, to love OAuth. And the way to do that is to, basically, _not_ care about OAuth.
 
-And I want you, dear reader, to love OAuth.
-And the way to do that is to, basically, not care about OAuth.
+
 And so we're going to take a journey to production together, with the Spring Authorization Server at our backs, and learn how to wield OAuth (via the amazing Spring Authorization Server) for some common kinds of patterns.
+
+== The Journey Ahead
+
+We're going to do a breadth-first not depth-first approach to using the Spring Authorization Server, so we're going to look at several pieces. By the end of this, we'll have explored:
+
+* a Spring Authorization Server instance (called `authorization-server`)
+* a backend HTTP API protected by Spring Security's OAuth 2 Resource Server capability (called `api`)
+* a headless RabbitMQ-powered microservice whose request handling is done with Spring Integration, and protected by Spring Security's OAuth 2 Resource Server capability, _sort of_. (called `processor`)
+* a static JavaScript application. I hesitate to even call it an application. It's one page, `index.html` (called `static`)
+* a Spring Cloud Gateway instance that's acting as an OAuth 2 token relay and OAuth 2 client, originating new OAuth 2 tokens if they're not present and then forwarding requests onward to the backend HTTP API and static JavaScript assets with the token in tow.
+
+We'll start first with the main event, the Spring Authorization Server. Arguably, everything _after_ that section would work equally well with any other OAuth 2 identity provider (IDP). But maybe you'll see in reading this section that you don't _need_ any other OAuth 2 identity provider any more. Either way, read on!
 
 == Try it out!
 
