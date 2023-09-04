@@ -1,5 +1,7 @@
 package bootiful.authorizationserver;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.*;
@@ -12,6 +14,8 @@ import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import com.fasterxml.jackson.databind.ser.Serializers;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.databind.type.TypeModifier;
+import jakarta.servlet.http.Cookie;
+import org.reflections.Reflections;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -19,16 +23,30 @@ import org.springframework.aot.hint.TypeReference;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ImportRuntimeHints;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponseType;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
 import org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationServerJackson2Module;
+import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
+import org.springframework.security.web.savedrequest.DefaultSavedRequest;
+import org.springframework.security.web.savedrequest.SavedCookie;
 
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.net.URL;
+import java.security.Principal;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -38,91 +56,98 @@ class AotConfiguration {
 
     static class Hints implements RuntimeHintsRegistrar {
 
+
+        private Set<Class<?>> subs(Reflections reflections, Class<?>... classesToFind) {
+            var all = new HashSet<Class<?>>();
+            for (var individualClass : classesToFind) {
+                var subTypesOf = reflections.getSubTypesOf(individualClass);
+                all.addAll(subTypesOf);
+            }
+            return all;
+        }
+
+        private Set<Class<?>> resolveJacksonTypes() {
+            var all = new HashSet<Class<?>>();
+            for (var pkg : Set.of("com.fasterxml", "org.springframework")) {
+                var reflections = new Reflections(pkg);
+                all.addAll(subs(reflections, JsonDeserializer.class, JsonSerializer.class, Module.class));
+                all.addAll(reflections.getTypesAnnotatedWith(JsonTypeInfo.class));
+                all.addAll(reflections.getTypesAnnotatedWith(JsonAutoDetect.class));
+            }
+            all.addAll(registerJacksonModuleDeps(all.stream().filter(Module.class::isAssignableFrom).collect(Collectors.toSet())));
+            return all;
+        }
+
+        private static Collection<Class<?>> registerJacksonModuleDeps(Set<Class<?>> moduleClasses) {
+            var set = new HashSet<Class<?>>();
+            var classLoader = AotConfiguration.class.getClassLoader();
+            var securityModules = new ArrayList<Module>();
+            securityModules.addAll(SecurityJackson2Modules.getModules(classLoader));
+            securityModules.addAll(moduleClasses
+                    .stream()
+                    .map(cn -> {
+                        try {
+                            for (var ctor : cn.getConstructors())
+                                if (ctor.getParameterCount() == 0)
+                                    return (Module) ctor.newInstance();
+                        } //
+                        catch (Throwable t) {
+                            System.out.println("couldn't construct and inspect module " + cn.getName());
+                        }
+                        return null;
+                    })
+                    .collect(Collectors.toSet())
+            );
+            var om = new ObjectMapper();
+            var sc = new AccumulatingSetupContext(om, set);
+            for (var module : securityModules) {
+                set.add(module.getClass());
+                module.setupModule(sc);
+                module.getDependencies().forEach(m -> set.add(m.getClass()));
+            }
+
+            return set;
+
+        }
+
         @Override
         public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
 
-            for (var type : List.of(
+            var javaClasses = Set.of(ArrayList.class, Date.class, Duration.class, Instant.class, URL.class, TreeMap.class, HashMap.class, LinkedHashMap.class, List.class);
 
-                    "java.util.Collections$UnmodifiableRandomAccessList",
-                    "org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponseType",
-                    "org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest",
-                    "org.springframework.security.oauth2.server.authorization.OAuth2Authorization",
-                    "org.springframework.security.core.authority.SimpleGrantedAuthority",
-                    "org.springframework.security.oauth2.core.AuthorizationGrantType",
-                    "org.springframework.security.authentication.UsernamePasswordAuthenticationToken",
-                    "org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat",
-                    "org.springframework.security.oauth2.core.AuthorizationGrantType",
-                    "org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest",
-                    "org.springframework.security.web.jackson2.CookieMixin",
-                    "org.springframework.security.web.jackson2.SavedCookieMixin",
-                    "org.springframework.security.web.jackson2.DefaultSavedRequestMixin",
-                    "org.springframework.security.web.jackson2.WebAuthenticationDetailsMixin",
-                    "org.springframework.security.web.savedrequest.DefaultSavedRequest",
-                    "org.springframework.security.web.savedrequest.SavedCookie",
-                    "java.util.ArrayList",
-                    "java.util.Collections$EmptyList",
-                    "java.util.Collections$EmptyMap",
-                    "java.util.Collections$UnmodifiableRandomAccessList",
-                    "java.util.Collections$SingletonList",
-                    "java.util.Collections$UnmodifiableSet",
-                    "java.util.Date",
-                    "java.time.Instant",
-                    "java.net.URL",
-                    "java.util.TreeMap",
-                    "java.util.HashMap",
-                    "java.util.LinkedHashMap",
-                    "java.util.Arrays$ArrayList",
-                    "java.util.List",
-                    "org.springframework.security.core.context.SecurityContextImpl",
-                    "org.springframework.security.oauth2.client.jackson2.OAuth2ClientJackson2Module",
-                    "com.fasterxml.jackson.datatype.jsr310.JavaTimeModule",
-                    "org.springframework.security.ldap.jackson2.LdapJackson2Module",
-                    "org.springframework.security.saml2.jackson2.Saml2Jackson2Module",
-                    "jakarta.servlet.http.Cookie",
-                    "org.springframework.security.oauth2.client.OAuth2AuthorizedClient",
-                    "com.fasterxml.jackson.databind.Module",
-                    "org.springframework.security.web.jackson2.WebServletJackson2Module",
-                    "org.springframework.security.oauth2.server.authorization.OAuth2Authorization",
-                    "org.springframework.security.jackson2.AnonymousAuthenticationTokenMixin",
-                    "org.springframework.security.jackson2.BadCredentialsExceptionMixin",
-                    "org.springframework.security.jackson2.CoreJackson2Module",
-                    "org.springframework.security.jackson2.RememberMeAuthenticationTokenMixin",
-                    "org.springframework.security.jackson2.SecurityJackson2Modules",
-                    "org.springframework.security.jackson2.SimpleGrantedAuthorityMixin",
-                    "org.springframework.security.jackson2.UnmodifiableListDeserializer",
-                    "org.springframework.security.jackson2.UnmodifiableListMixin",
-                    "org.springframework.security.jackson2.UnmodifiableMapDeserializer",
-                    "org.springframework.security.jackson2.UnmodifiableSetDeserializer",
-                    "org.springframework.security.jackson2.UnmodifiableSetMixin",
-                    "org.springframework.security.jackson2.UserDeserializer",
-                    "org.springframework.security.jackson2.UserMixin",
-                    "org.springframework.security.jackson2.UsernamePasswordAuthenticationTokenMixin",
-                    "org.springframework.security.cas.jackson2.CasJackson2Module",
-                    "org.springframework.security.jackson2.UsernamePasswordAuthenticationTokenDeserializer",
-                    "org.springframework.security.web.jackson2.WebJackson2Module",
-                    "org.springframework.security.web.server.jackson2.WebServerJackson2Module",
-                    "org.springframework.security.oauth2.server.authorization.jackson2.DurationMixin",
-                    "org.springframework.security.oauth2.server.authorization.jackson2.HashSetMixin",
-                    "org.springframework.security.oauth2.server.authorization.jackson2.JwsAlgorithmMixin",
-                    "org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationRequestDeserializer",
-                    "org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationRequestMixin",
-                    "org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationServerJackson2Module",
-                    "org.springframework.security.oauth2.server.authorization.jackson2.UnmodifiableMapMixin",
-                    "org.springframework.security.authentication.UsernamePasswordAuthenticationToken",
-                    "org.springframework.security.core.userdetails.User",
-                    "org.springframework.security.web.authentication.WebAuthenticationDetails",
-                    "org.springframework.security.core.authority.SimpleGrantedAuthority",
-                    "org.springframework.security.jackson2.UnmodifiableMapMixin",
-                    "org.springframework.security.oauth2.server.authorization.jackson2.OAuth2TokenFormatMixin",
-                    "java.time.Duration",
-                    "org.springframework.security.core.GrantedAuthority",
-                    "org.springframework.security.oauth2.jose.jws.SignatureAlgorithm",
-                    "java.util.Collections$UnmodifiableMap",
-                    "org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat",
-                    "org.springframework.security.oauth2.server.authorization.jackson2.UnmodifiableMapDeserializer")) {
+            var savedRequestClasses = Set.of(DefaultSavedRequest.class, SavedCookie.class);
+
+            var oauth2CoreClasses = Set.of(SignatureAlgorithm.class, OAuth2AuthorizationResponseType.class, OAuth2AuthorizationRequest.class, AuthorizationGrantType.class, OAuth2TokenFormat.class, OAuth2Authorization.class, SecurityContextImpl.class);
+
+            var securityClasses = Set.of(User.class, WebAuthenticationDetails.class, GrantedAuthority.class, Principal.class, SimpleGrantedAuthority.class, UsernamePasswordAuthenticationToken.class);
+
+            var servletClasses = Set.of(Cookie.class);
+
+            var jacksonTypes = new HashSet<>(resolveJacksonTypes());
+            jacksonTypes.add(SecurityJackson2Modules.class);
+
+            var classes = new ArrayList<Class<?>>();
+            classes.addAll(jacksonTypes);
+            classes.addAll(servletClasses);
+            classes.addAll(oauth2CoreClasses);
+            classes.addAll(savedRequestClasses);
+            classes.addAll(javaClasses);
+            classes.addAll(securityClasses);
+
+            var stringClasses = Map.of(
+                    "java.util.", Set.of("Arrays$ArrayList"),
+                    "java.util.Collections$", Set.of("UnmodifiableRandomAccessList", "EmptyList", "UnmodifiableMap", "EmptyMap", "SingletonList", "UnmodifiableSet")
+            );//
+
+            var all = classes.stream().map(Class::getName).collect(Collectors.toCollection(HashSet::new));
+            stringClasses.forEach((root, setOfClasses) -> setOfClasses.forEach(cn -> all.add(root + cn)));
+
+            var memberCategories = MemberCategory.values();
+
+            all.forEach(type -> {
                 var typeReference = TypeReference.of(type);
-                var values = MemberCategory.values();
-                hints.reflection().registerType(typeReference, values);
+                hints.reflection().registerType(typeReference, memberCategories);
+                System.out.println("registering " + type);
                 try {
                     var clzz = Class.forName(typeReference.getName());
                     if (Serializable.class.isAssignableFrom(clzz)) {
@@ -133,58 +158,19 @@ class AotConfiguration {
                 catch (Throwable t) {
                     System.out.println("couldn't register serialization hint for " + typeReference.getName() + ":" + t.getMessage());
                 }
-
-            }
-
-            for (var folder : Set.of("data", "schema"))
-                hints.resources().registerPattern("sql/" + folder + "/*sql");
-
-            registerSecurityJacksonModules(hints);
-
-        }
-
-        private static void registerSecurityJacksonModules(RuntimeHints hints) {
-
-
-            Set.of(
-
-                            "org.springframework.security.jackson2.CoreJackson2Module",
-                            "org.springframework.security.cas.jackson2.CasJackson2Module",
-                            "org.springframework.security.web.jackson2.WebJackson2Module",
-                            "org.springframework.security.web.server.jackson2.WebServerJackson2Module",
-                            "org.springframework.security.web.jackson2.WebServletJackson2Module",
-                            "org.springframework.security.oauth2.client.jackson2.OAuth2ClientJackson2Module",
-                            "com.fasterxml.jackson.datatype.jsr310.JavaTimeModule",
-                            "org.springframework.security.ldap.jackson2.LdapJackson2Module",
-                            "org.springframework.security.saml2.jackson2.Saml2Jackson2Module")
-                    .forEach(cn -> hints.reflection().registerType(TypeReference.of(cn), MemberCategory.values()));
-
-
-            var set = new HashSet<Class<?>>();
-            ClassLoader classLoader = AotConfiguration.class.getClassLoader();
-            List<Module> securityModules = SecurityJackson2Modules.getModules(classLoader);
-            var om = new ObjectMapper();
-            var sc = new AccumulatingSetupContext(om, set);
-
-            for (var module : securityModules) {
-                set.add(module.getClass());
-                module.setupModule(sc);
-                module.getDependencies().forEach(m -> set.add(m.getClass()));
-            }
-
-            set.forEach(c -> {
-                System.out.println("registering security related type " + c.getName() + '.');
-                hints.reflection().registerType(c, MemberCategory.values());
             });
+
+            Set.of("data", "schema").forEach(folder -> hints.resources().registerPattern("sql/" + folder + "/*sql"));
+
         }
+
     }
 
     static class AccumulatingSetupContext implements Module.SetupContext {
 
+        private final Collection<Class<?>> classesToRegister;
 
-        final Collection<Class<?>> classesToRegister;
-
-        final ObjectMapper objectMapper;
+        private final ObjectMapper objectMapper;
 
         AccumulatingSetupContext(ObjectMapper objectMapper, Collection<Class<?>> classes) {
             this.objectMapper = objectMapper;
@@ -340,7 +326,7 @@ class AotConfiguration {
 //@Configuration
 class JsonConfiguration {
 
-//    @Bean
+    // @Bean
     ApplicationRunner parse() {
         return a -> {
             var gaList = new com.fasterxml.jackson.core.type.TypeReference<List<GrantedAuthority>>() {
@@ -352,9 +338,9 @@ class JsonConfiguration {
             objectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
             var json = """
 
-{"@class":"java.util.Collections$UnmodifiableMap","org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest":{"@class":"org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest","authorizationUri":"http://localhost:8080/oauth2/authorize","authorizationGrantType":{"value":"authorization_code"},"responseType":{"value":"code"},"clientId":"crm","redirectUri":"http://127.0.0.1:8082/login/oauth2/code/spring","scopes":["java.util.Collections$UnmodifiableSet",["user.read","openid"]],"state":"shZOE2J_HVxAGdHdSbrqKJY6xoYPTHXTpK-_oVh3BqY=","additionalParameters":{"@class":"java.util.Collections$UnmodifiableMap","nonce":"J_gHhZNYPWoZBVEAAL_0fzMpbH0vIWUZuUcmVoy1kks","continue":""},"authorizationRequestUri":"http://localhost:8080/oauth2/authorize?response_type=code&client_id=crm&scope=user.read%20openid&state=shZOE2J_HVxAGdHdSbrqKJY6xoYPTHXTpK-_oVh3BqY%3D&redirect_uri=http://127.0.0.1:8082/login/oauth2/code/spring&nonce=J_gHhZNYPWoZBVEAAL_0fzMpbH0vIWUZuUcmVoy1kks&continue=","attributes":{"@class":"java.util.Collections$UnmodifiableMap"}},"java.security.Principal":{"@class":"org.springframework.security.authentication.UsernamePasswordAuthenticationToken","authorities":["java.util.Collections$UnmodifiableRandomAccessList",[{"@class":"org.springframework.security.core.authority.SimpleGrantedAuthority","authority":"ROLE_USER"}]],"details":{"@class":"org.springframework.security.web.authentication.WebAuthenticationDetails","remoteAddress":"0:0:0:0:0:0:0:1","sessionId":"AF9B71B27FDAC33F05DEB57E325E3FE6"},"authenticated":true,"principal":{"@class":"org.springframework.security.core.userdetails.User","password":null,"username":"jlong","authorities":["java.util.Collections$UnmodifiableSet",[{"@class":"org.springframework.security.core.authority.SimpleGrantedAuthority","authority":"ROLE_USER"}]],"accountNonExpired":true,"accountNonLocked":true,"credentialsNonExpired":true,"enabled":true},"credentials":null}}
+                    {"@class":"java.util.Collections$UnmodifiableMap","org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest":{"@class":"org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest","authorizationUri":"http://localhost:8080/oauth2/authorize","authorizationGrantType":{"value":"authorization_code"},"responseType":{"value":"code"},"clientId":"crm","redirectUri":"http://127.0.0.1:8082/login/oauth2/code/spring","scopes":["java.util.Collections$UnmodifiableSet",["user.read","openid"]],"state":"shZOE2J_HVxAGdHdSbrqKJY6xoYPTHXTpK-_oVh3BqY=","additionalParameters":{"@class":"java.util.Collections$UnmodifiableMap","nonce":"J_gHhZNYPWoZBVEAAL_0fzMpbH0vIWUZuUcmVoy1kks","continue":""},"authorizationRequestUri":"http://localhost:8080/oauth2/authorize?response_type=code&client_id=crm&scope=user.read%20openid&state=shZOE2J_HVxAGdHdSbrqKJY6xoYPTHXTpK-_oVh3BqY%3D&redirect_uri=http://127.0.0.1:8082/login/oauth2/code/spring&nonce=J_gHhZNYPWoZBVEAAL_0fzMpbH0vIWUZuUcmVoy1kks&continue=","attributes":{"@class":"java.util.Collections$UnmodifiableMap"}},"java.security.Principal":{"@class":"org.springframework.security.authentication.UsernamePasswordAuthenticationToken","authorities":["java.util.Collections$UnmodifiableRandomAccessList",[{"@class":"org.springframework.security.core.authority.SimpleGrantedAuthority","authority":"ROLE_USER"}]],"details":{"@class":"org.springframework.security.web.authentication.WebAuthenticationDetails","remoteAddress":"0:0:0:0:0:0:0:1","sessionId":"AF9B71B27FDAC33F05DEB57E325E3FE6"},"authenticated":true,"principal":{"@class":"org.springframework.security.core.userdetails.User","password":null,"username":"jlong","authorities":["java.util.Collections$UnmodifiableSet",[{"@class":"org.springframework.security.core.authority.SimpleGrantedAuthority","authority":"ROLE_USER"}]],"accountNonExpired":true,"accountNonLocked":true,"credentialsNonExpired":true,"enabled":true},"credentials":null}}
 
-                    """;
+                                        """;
             var jsonNode = objectMapper.readTree(json);
             var authoritiesJsonNode = readJsonNode(jsonNode, "authorities").traverse(objectMapper);
             var authorities = objectMapper.readValue(authoritiesJsonNode, gaList);

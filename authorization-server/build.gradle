@@ -16,7 +16,9 @@ repositories {
 	mavenCentral()
 }
 
+
 dependencies {
+	implementation 'org.reflections:reflections:0.9.11'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-authorization-server'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	runtimeOnly 'org.postgresql:postgresql'
