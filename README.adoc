@@ -393,4 +393,26 @@ include::authorization-server/src/main/resources/sql/schema/oauth2-authorization
 
 
 
+==== The HTTP Sessions themselves
+
+
+The final piece of the persistence pie is to persist the actual HTTP sessions themselves. Spring Authorization Server assumes a Servlet container is present somewhere. By default, Spring Boot uses Apache Tomcat, though that's very configurable. And Apache Tomcat, in turn, provides session management features consistent with the HTTP Servlet specification. It's even got pluggable HTTP session management, meaning you can plugin other implementations of Apache Tomcat's proprietary abstraction. But this isn't easy, or portable. Indeed, any web server is going to have some rudimentary HTTP session management, but session clustering and replication, consistency checks, etc., are not their _raison d'être: serving HTTP requests is.
+
+Spring Session can help. It wraps the containers' default `HttpSession`. All interactions you have pass through the wrapper, which in turn delegates to any of a number of implementations backed by technology that is far faster and more reliable in the ways of making data consistently available.You can use implementations for, among other things, Hazelcast, Redis, and of course any 'ol SQL `DataSource`. We're choosing to continue to leverage our investment in PostgreSQL, so we'll use the Spring Session JDBC module.
+
+Add the following dependency to the build:
+
+[source,groovy]
+----
+	implementation 'org.springframework.session:spring-session-jdbc'
+----
+
+There is a property, `spring.session.jdbc.initialize-schema=always`, that once specified will cause Spring Session to install the JDBC schema for you in the database. It worked for me (surprise!), in PostgreSQL. But, I just really want the schema to all be in one place where I can version control it, audit it, etc, so here's the schema. Create a file `src/main/resources/sql/schema/spring-session-jdbc.sql`.
+
+[source,sql]
+-----
+include::authorization-server/src/main/resources/sql/schema/spring-session-jdbc.sql[]
+-----
+
+And that's it! Now you can run more than one instance of the Spring Authorization Server behind a load balancer, and no matter to which instance a client and its cookies present themselves, the container will resolve the session from the PostgreSQL database. By the way, is now a good time to remind you not to stash sensitive stuff in the HTTP session? You never know when it's going to be serialized to some datastore...
 
