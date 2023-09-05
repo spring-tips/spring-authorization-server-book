@@ -17,20 +17,19 @@ repositories {
 }
 
 dependencies {
+
 	implementation 'org.springframework.boot:spring-boot-starter-amqp'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
 	implementation 'org.springframework.boot:spring-boot-starter-integration'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.integration:spring-integration-amqp'
+	implementation 'org.springframework.integration:spring-integration-http'
+	implementation 'org.springframework.integration:spring-integration-jdbc'
 	runtimeOnly 'org.postgresql:postgresql'
-	testImplementation 'org.springframework.amqp:spring-rabbit-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.springframework.amqp:spring-rabbit-test'
 	testImplementation 'org.springframework.integration:spring-integration-test'
-	testImplementation 'org.testcontainers:junit-jupiter'
-	testImplementation 'org.testcontainers:postgresql'
-	testImplementation 'org.testcontainers:rabbitmq'
 
 }
 
