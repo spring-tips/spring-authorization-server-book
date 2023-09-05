@@ -57,8 +57,7 @@ Grab (`git clone`) the https://github.com/spring-tips/spring-authorization-serve
 * in `static`, run `run.sh`
 * visit `http://127.0.0.1:8082` (important: use the IP, _not_ `localhost`!) in the browser.
 * login with `jlong`/`password` (yes, I know it's a terrible password, don't `@` me!), and then consent when prompted.
-* you'll see a list of customers, click on the `email` button to kick off work in the `processor`.
-You should see indications in the console that your message has been sent.
+* you'll see a list of customers, click on the `email` button to kick off work in the `processor`. You should see indications in the console that your message has been sent.
 
 Lot's of moving parts, but here's what you need to know: we have a JavaScript/HTML 5 client, a backend HTTP API, and a headless backoffice process, all of which have been secured with the Spring Authorization Server.
 
@@ -422,3 +421,6 @@ include::authorization-server/src/main/resources/sql/schema/spring-session-jdbc.
 
 And that's it!  Restart the Spring Authorization Server. Now you can run more than one instance of the Spring Authorization Server behind a load balancer, and no matter to which instance a client and its cookies present themselves, the container will resolve the session from the PostgreSQL database. By the way, is now a good time to remind you not to stash sensitive stuff in the HTTP session? You never know when it's going to be serialized to some datastore...
 
+== Protecting a Simple HTTP API
+
+Let's build an HTTP API. Honestly, this is just a pretense to have something to secure with the Spring Security OAuth support, so we'll make this quick. First, go to the https://start.spring.io[Spring Initializr],
