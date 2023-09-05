@@ -619,6 +619,14 @@ TOKEN=$( curl -X POST \
      http://localhost:8080/oauth2/token | jq -r  .access_token )
 ----
 
+By the way, you could also issue the same request using Spring's `RestTemplate` or `WebClient` or `RestClient`. Here's the equivalent using ye ole `RestTemplate`:
+
+
+[source,java]
+----
+include::api/src/main/java/bootiful/api/ClientCredentialsClient.java[]
+----
+
 You can use this token to then issue a request to the HTTP server:
 
 [source,shell]
@@ -635,5 +643,6 @@ We sort of cheated here, though. We got a token using the `client_credentials` a
 
 == The Gateway Client
 
+In our super OAuth-secured onion, this next microservice - the `gateway` -  is the outermost layer. It is the first port-of-call for all requests intended for our system.
 
 
