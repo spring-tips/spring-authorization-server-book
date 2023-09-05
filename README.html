@@ -987,13 +987,11 @@ So you enter your information, login, and you have to whatever mutli-factor auth
 Armed with this, the application running at Yelp.com can now transmit requests to the Google.com APIs, asking it questions about you, like your email.
 It might also be able to read your Google calendar events, location data, etc.
 What precisely the application at Yelp.com has access to is a function of the <em>scopes</em> requested by the client.
-The application at Yelp.com stores the token and uses it to interact with Google on your behalf.
-Occasionally, Google.com will expire the token.
-Tokens, like milk, go stale!
-No worries: the application at Yelp.com has a <em>refresh</em> token it can use to refresh the token and get a new one.</p>
+The application at Yelp.com stores the token and uses it to interact with Google on your behalf. Occasionally, Google.com will expire the token.
+Tokens, like milk, go stale! No worries: the application at Yelp.com has a <em>refresh</em> token it can use to refresh the token and get a new one.</p>
 </div>
 <div class="paragraph">
-<p>You&#8217;re glad you signed up at Yelp.com, but look at the time, it&#8217;s noon, the sun&#8217;s out and the kid wants to go play mini golf at the place you just found on Yelp.com.
+<p>You&#8217;re glad you signed up at Yelp.com, but look at the time! It&#8217;s noon, the sun&#8217;s out and the kid wants to go play mini golf at the place you just found on Yelp.com.
 Gotta go!</p>
 </div>
 <div class="paragraph">
@@ -1705,7 +1703,8 @@ This is what we used to call a backoffice process. I&#8217;m calling it <code>pr
     <span class="o">}</span>
 
     <span class="nd">@PostMapping</span><span class="o">(</span><span class="s">"/email"</span><span class="o">)</span>
-    <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="nf">email</span><span class="o">(</span><span class="nd">@AuthenticationPrincipal</span> <span class="nc">Jwt</span> <span class="n">jwt</span><span class="o">,</span> <span class="nd">@RequestParam</span> <span class="nc">Integer</span> <span class="n">customerId</span><span class="o">)</span> <span class="o">{</span>
+    <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="nf">email</span><span class="o">(</span><span class="nd">@AuthenticationPrincipal</span> <span class="nc">Jwt</span> <span class="n">jwt</span><span class="o">,</span>
+                              <span class="nd">@RequestParam</span> <span class="nc">Integer</span> <span class="n">customerId</span><span class="o">)</span> <span class="o">{</span>
         <span class="kt">var</span> <span class="n">token</span> <span class="o">=</span> <span class="n">jwt</span><span class="o">.</span><span class="na">getTokenValue</span><span class="o">();</span>
         <span class="kt">var</span> <span class="n">message</span> <span class="o">=</span> <span class="nc">MessageBuilder</span>
                 <span class="o">.</span><span class="na">withPayload</span><span class="o">(</span><span class="n">repository</span><span class="o">.</span><span class="na">findCustomerById</span><span class="o">(</span><span class="n">customerId</span><span class="o">))</span>

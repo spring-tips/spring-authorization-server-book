@@ -162,12 +162,10 @@ At the end of this dance, Google.com transmitted a _token_ to the application ru
 Armed with this, the application running at Yelp.com can now transmit requests to the Google.com APIs, asking it questions about you, like your email.
 It might also be able to read your Google calendar events, location data, etc.
 What precisely the application at Yelp.com has access to is a function of the _scopes_ requested by the client.
-The application at Yelp.com stores the token and uses it to interact with Google on your behalf.
-Occasionally, Google.com will expire the token.
-Tokens, like milk, go stale!
-No worries: the application at Yelp.com has a _refresh_ token it can use to refresh the token and get a new one.
+The application at Yelp.com stores the token and uses it to interact with Google on your behalf. Occasionally, Google.com will expire the token.
+Tokens, like milk, go stale! No worries: the application at Yelp.com has a _refresh_ token it can use to refresh the token and get a new one.
 
-You're glad you signed up at Yelp.com, but look at the time, it's noon, the sun's out and the kid wants to go play mini golf at the place you just found on Yelp.com.
+You're glad you signed up at Yelp.com, but look at the time! It's noon, the sun's out and the kid wants to go play mini golf at the place you just found on Yelp.com.
 Gotta go!
 
 Time passes, and you return to Yelp.com a week later.

@@ -25,7 +25,8 @@ class EmailController {
     }
 
     @PostMapping("/email")
-    Map<String, Object> email(@AuthenticationPrincipal Jwt jwt, @RequestParam Integer customerId) {
+    Map<String, Object> email(@AuthenticationPrincipal Jwt jwt,
+                              @RequestParam Integer customerId) {
         var token = jwt.getTokenValue();
         var message = MessageBuilder
                 .withPayload(repository.findCustomerById(customerId))
