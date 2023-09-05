@@ -706,5 +706,33 @@ Let's look at the Java code first.
 
 [source,java]
 -----
-include::gateway/src/main/java/bootiful/gateway/GatewayApplication.java[]
+include::gateway/src/main/java/bootiful/gateway/SecurityConfiguration.java[]
 -----
+<1> you could probably get away with not definining this bean at all _if_ you were willing to deal with default behavior of CSRF tokens, which I am not. In the interest of simplicity, I'm disabling them, but in so doing I am also disabling all the other  things Spring Security assumed I wanted. So we will also go through and re-enable those things.
+<2> We want all HTTP requests to be authenticated...
+<3> ...and to disable the CSRF support...
+<4> ...and to re-enable OAuth 2 OIDC login support and the OAuth 2 client support. The OIDC login functionality is what triggers the OAuth dance we've talked about. The OAuth 2 client support  is what tells Spring Security, running in this process, as which OAuth 2 client requests for OIDC login should be done. We'll need to specify the particulars in the property configuration later.
+
+The security configuration is pretty straightforward. We're an OAuth client. We want to prompt users to login with a particular client. Once a user is authenticated, well, there's not much for them to see! We need Spring Cloud Gateway to connect our other HTTP services to the user visiting this `gateway` service.
+
+
+We'll configure two Spring Cloud Gateway _routes_. Each request has a predicate, optional filter(s), and a destination URI. The predicate defines how requests to the Spring Cloud Gateway service are matched, e.g.: does this request have a particular header or cookie, or a particlar path, or a particular virtual host? You may specify one or more filters that act on the incoming requests, changing it. Finally, the request, after it has passed through any and all filters, is sent to a final destination, which we specify with a URI.
+
+[source,java]
+-----
+include::gateway/src/main/java/bootiful/gateway/GatewayConfiguration.java[]
+-----
+<1> the first route matches all requests to `/api/**`, notes and forwards any OAuth JWTs to the backend service, and changes the path of the request from `gateway:8082/api/foo` to `api:8081/foo`, dropping the `/api/` bit.
+<2> the second route takes every other request and sends it unchecked on to the HTTP endpoint service up the static HTMl 5 and JavaScript assets.
+
+
+That's just about all the Java code for this service, but its role and importance in the architecture can not be overstated. Let's look at the property file that ties it all together.
+
+
+[source,properties]
+-----
+include::gateway/src/main/resources/application.properties[]
+-----
+<1> this process will run on port `8082`.
+<2> it will use the issuer URI to validate JWTs if it detects them
+<3> otherwise it will use this configuration to, acting as a client, inintiate an OIDC login to allow you to come up with a valid token.
