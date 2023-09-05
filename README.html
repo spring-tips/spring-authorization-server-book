@@ -674,6 +674,7 @@ pre.rouge {
 </ul>
 </li>
 <li><a href="#_protecting_a_simple_http_api">Protecting a Simple HTTP API</a></li>
+<li><a href="#_the_gateway_client">The Gateway Client</a></li>
 </ul>
 </div>
 </div>
@@ -702,18 +703,25 @@ It&#8217;s a full-blown OAuth identity provider (IDP), distributed as Spring Boo
 First there was OIDC client support, and then resource server support, and now - after a <em>lot</em> of community outpouring and support - a brand new and fully featured OAuth IDP.</p>
 </div>
 <div class="paragraph">
-<p>Why not use Keycloak, Okta, Auth0, ActiveDirectory, or something, I hear you ask? And the answer is.. be our guest! 99% of the stuff we&#8217;re going to look at here works with any OAuth IDP. But i do so love the Spring Authorization Server. I don&#8217;t know an easier way to get as configurable and flexible IDP up-and-running.</p>
+<p>Why not use Keycloak, Okta, Auth0, ActiveDirectory, or something, I hear you ask?
+And the answer is.. be our guest! 99% of the stuff we&#8217;re going to look at here works with any OAuth IDP.
+But i do so love the Spring Authorization Server.
+I don&#8217;t know an easier way to get as configurable and flexible IDP up-and-running.</p>
 </div>
 <div class="paragraph">
 <p>Having an easy component for your IDP integration is <em>liberating</em>.
 If nothing else, it&#8217;s one less <code>users</code> microservice for you to build.
-But, at its best, it&#8217;s a unifying force for your organization&#8217;s notions of identity and policy, all centralized. If you implement it correctly, it&#8217;s one less <code>users</code> microservice for <em>all</em> of your systems, not just the one you&#8217;re working on now!</p>
+But, at its best, it&#8217;s a unifying force for your organization&#8217;s notions of identity and policy, all centralized.
+If you implement it correctly, it&#8217;s one less <code>users</code> microservice for <em>all</em> of your systems, not just the one you&#8217;re working on now!</p>
 </div>
 <div class="paragraph">
 <p>It&#8217;s Spring, so it of course supports the new-and-novel, but it&#8217;s also built like all Spring Boot autoconfiguration, with hooks and customization in mind at every step.</p>
 </div>
 <div class="paragraph">
-<p>I love it and I love it for helping me to love OAuth. If you only knew the agony I&#8217;ve been subjected to in learning and welding OAuth over the years, then you&#8217;ll know what a thing that is for me to say. And I want you, dear reader, to love OAuth. And the way to do that is to, basically, <em>not</em> care about OAuth.</p>
+<p>I love it and I love it for helping me to love OAuth.
+If you only knew the agony I&#8217;ve been subjected to in learning and welding OAuth over the years, then you&#8217;ll know what a thing that is for me to say.
+And I want you, dear reader, to love OAuth.
+And the way to do that is to, basically, <em>not</em> care about OAuth.</p>
 </div>
 <div class="paragraph">
 <p>And so we&#8217;re going to take a journey to production together, with the Spring Authorization Server at our backs, and learn how to wield OAuth (via the amazing Spring Authorization Server) for some common kinds of patterns.</p>
@@ -724,7 +732,8 @@ But, at its best, it&#8217;s a unifying force for your organization&#8217;s noti
 <h2 id="_the_journey_ahead">The Journey Ahead</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>We&#8217;re going to do a breadth-first not depth-first approach to using the Spring Authorization Server, so we&#8217;re going to look at several pieces. By the end of this, we&#8217;ll have explored:</p>
+<p>We&#8217;re going to do a breadth-first not depth-first approach to using the Spring Authorization Server, so we&#8217;re going to look at several pieces.
+By the end of this, we&#8217;ll have explored:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -738,7 +747,9 @@ But, at its best, it&#8217;s a unifying force for your organization&#8217;s noti
 <p>a headless RabbitMQ-powered microservice whose request handling is done with Spring Integration, and protected by Spring Security&#8217;s OAuth 2 Resource Server capability, <em>sort of</em>. (called <code>processor</code>)</p>
 </li>
 <li>
-<p>a static JavaScript application. I hesitate to even call it an application. It&#8217;s one page, <code>index.html</code> (called <code>static</code>)</p>
+<p>a static JavaScript application.
+I hesitate to even call it an application.
+It&#8217;s one page, <code>index.html</code> (called <code>static</code>)</p>
 </li>
 <li>
 <p>a Spring Cloud Gateway instance that&#8217;s acting as an OAuth 2 token relay and OAuth 2 client, originating new OAuth 2 tokens if they&#8217;re not present and then forwarding requests onward to the backend HTTP API and static JavaScript assets with the token in tow.</p>
@@ -746,7 +757,10 @@ But, at its best, it&#8217;s a unifying force for your organization&#8217;s noti
 </ul>
 </div>
 <div class="paragraph">
-<p>We&#8217;ll start first with the main event, the Spring Authorization Server. Arguably, everything <em>after</em> that section would work equally well with any other OAuth 2 identity provider (IDP). But maybe you&#8217;ll see in reading this section that you don&#8217;t <em>need</em> any other OAuth 2 identity provider any more. Either way, read on!</p>
+<p>We&#8217;ll start first with the main event, the Spring Authorization Server.
+Arguably, everything <em>after</em> that section would work equally well with any other OAuth 2 identity provider (IDP).
+But maybe you&#8217;ll see in reading this section that you don&#8217;t <em>need</em> any other OAuth 2 identity provider any more.
+Either way, read on!</p>
 </div>
 </div>
 </div>
@@ -784,7 +798,8 @@ Grab (<code>git clone</code>) the <a href="https://github.com/spring-tips/spring
 <p>login with <code>jlong</code>/<code>password</code> (yes, I know it&#8217;s a terrible password, don&#8217;t <code>@</code> me!), and then consent when prompted.</p>
 </li>
 <li>
-<p>you&#8217;ll see a list of customers, click on the <code>email</code> button to kick off work in the <code>processor</code>. You should see indications in the console that your message has been sent.</p>
+<p>you&#8217;ll see a list of customers, click on the <code>email</code> button to kick off work in the <code>processor</code>.
+You should see indications in the console that your message has been sent.</p>
 </li>
 </ul>
 </div>
@@ -795,7 +810,10 @@ Grab (<code>git clone</code>) the <a href="https://github.com/spring-tips/spring
 <p>Shut everything down, and we&#8217;ll start from scratch.</p>
 </div>
 <div class="paragraph">
-<p>Refreshingly simple. Let&#8217;s dive right into the nitty-gritty. I want you building secure systems by the article&#8217;s end. My goal here is not to cover <em>every</em> possible use case, but to cover some of the typical use-cases and introduce progressively more moving parts so that, if at some point you don&#8217;t see what you need, you know where to reach you to build it yourself.</p>
+<p>Refreshingly simple.
+Let&#8217;s dive right into the nitty-gritty.
+I want you building secure systems by the article&#8217;s end.
+My goal here is not to cover <em>every</em> possible use case, but to cover some of the typical use-cases and introduce progressively more moving parts so that, if at some point you don&#8217;t see what you need, you know where to reach you to build it yourself.</p>
 </div>
 </div>
 </div>
@@ -803,7 +821,9 @@ Grab (<code>git clone</code>) the <a href="https://github.com/spring-tips/spring
 <h2 id="_docker_compose_and_our_middleware">Docker Compose and our Middleware</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>I know I just told you to shut everything down, but you need to restart one thing: the Docker images for both PostgreSQL and RabbitMQ. I&#8217;ve described all of their configuration in a <code>docker-compose.yml</code> file in the root of this project. It looks like this.</p>
+<p>I know I just told you to shut everything down, but you need to restart one thing: the Docker images for both PostgreSQL and RabbitMQ.
+I&#8217;ve described all of their configuration in a <code>docker-compose.yml</code> file in the root of this project.
+It looks like this.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -841,7 +861,9 @@ Grab (<code>git clone</code>) the <a href="https://github.com/spring-tips/spring
 </div>
 </div>
 <div class="paragraph">
-<p>RabbitMQ will be running on the usual port and have a user, <code>user</code>, and a password, <code>password</code>. PostgresSQL will be running on the usual port with the user <code>postgres</code>, schema called <code>postgres</code>, and the password <code>postgres</code>. Yes, I know these are terrible passwords&#8230;&#8203;</p>
+<p>RabbitMQ will be running on the usual port and have a user, <code>user</code>, and a password, <code>password</code>.
+PostgresSQL will be running on the usual port with the user <code>postgres</code>, schema called <code>postgres</code>, and the password <code>postgres</code>.
+Yes, I know these are terrible passwords&#8230;&#8203;</p>
 </div>
 </div>
 </div>
@@ -849,7 +871,11 @@ Grab (<code>git clone</code>) the <a href="https://github.com/spring-tips/spring
 <h2 id="_stand_up_a_spring_authorization_server_instance_for_great_good">Stand up a Spring Authorization Server Instance for Great Good</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Go to the <a href="https://start.spring.io">Spring Initializr (start.spring.io)</a>, specify a group ID and an artifact ID (I chose <code>bootiful</code> : <code>authorization-server</code>) and add  <code>OAuth2 Authorization Server</code> as a dependency. I&#8217;d add <code>GraalVM Native Support</code> for good measure, but you do you. Open the downloaded project in your IDE. I&#8217;m using IntelliJ IDEA, but again, you do you. I ran the following command from the root of the newly unzipped archive: <code>idea build.gradle</code>.</p>
+<p>Go to the <a href="https://start.spring.io">Spring Initializr (start.spring.io)</a>, specify a group ID and an artifact ID (I chose <code>bootiful</code> : <code>authorization-server</code>) and add  <code>OAuth2 Authorization Server</code> as a dependency.
+I&#8217;d add <code>GraalVM Native Support</code> for good measure, but you do you.
+Open the downloaded project in your IDE.
+I&#8217;m using IntelliJ IDEA, but again, you do you.
+I ran the following command from the root of the newly unzipped archive: <code>idea build.gradle</code>.</p>
 </div>
 <div class="paragraph">
 <p>You&#8217;ve got a new Spring Boot Authorization Server.
@@ -858,10 +884,13 @@ We need to specify two things: <strong>users</strong>, and <strong>clients</stro
 <div class="sect2">
 <h3 id="_users">Users</h3>
 <div class="paragraph">
-<p>Users are pretty straight forward, right? A user is the sum of the username, password, and associated information attached to the systems' notion of identity. The beating heart of our system.</p>
+<p>Users are pretty straight forward, right?
+A user is the sum of the username, password, and associated information attached to the systems' notion of identity.
+The beating heart of our system.</p>
 </div>
 <div class="paragraph">
-<p>There are a lot of ways to get this done. The easiest might be to just have one user, the <em>default</em> user, which you can describe using Spring Boot&#8217;s associated properties, like this:</p>
+<p>There are a lot of ways to get this done.
+The easiest might be to just have one user, the <em>default</em> user, which you can describe using Spring Boot&#8217;s associated properties, like this:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -871,7 +900,8 @@ We need to specify two things: <strong>users</strong>, and <strong>clients</stro
 </div>
 </div>
 <div class="paragraph">
-<p>This gets us off the ground, but as soon as you want two or more users, you&#8217;ll need to specify them a different way. The easiest is probably to define a bean of type   <code>InMemoryUserDetailsManager</code>, like this.</p>
+<p>This gets us off the ground, but as soon as you want two or more users, you&#8217;ll need to specify them a different way.
+The easiest is probably to define a bean of type   <code>InMemoryUserDetailsManager</code>, like this.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -987,11 +1017,14 @@ So you enter your information, login, and you have to whatever mutli-factor auth
 Armed with this, the application running at Yelp.com can now transmit requests to the Google.com APIs, asking it questions about you, like your email.
 It might also be able to read your Google calendar events, location data, etc.
 What precisely the application at Yelp.com has access to is a function of the <em>scopes</em> requested by the client.
-The application at Yelp.com stores the token and uses it to interact with Google on your behalf. Occasionally, Google.com will expire the token.
-Tokens, like milk, go stale! No worries: the application at Yelp.com has a <em>refresh</em> token it can use to refresh the token and get a new one.</p>
+The application at Yelp.com stores the token and uses it to interact with Google on your behalf.
+Occasionally, Google.com will expire the token.
+Tokens, like milk, go stale!
+No worries: the application at Yelp.com has a <em>refresh</em> token it can use to refresh the token and get a new one.</p>
 </div>
 <div class="paragraph">
-<p>You&#8217;re glad you signed up at Yelp.com, but look at the time! It&#8217;s noon, the sun&#8217;s out and the kid wants to go play mini golf at the place you just found on Yelp.com.
+<p>You&#8217;re glad you signed up at Yelp.com, but look at the time!
+It&#8217;s noon, the sun&#8217;s out and the kid wants to go play mini golf at the place you just found on Yelp.com.
 Gotta go!</p>
 </div>
 <div class="paragraph">
@@ -1475,7 +1508,8 @@ The changes we&#8217;ve made replace all <code>blob</code> types with <code>text
 <div class="paragraph">
 <p><code>OAuth2AuthorizationConsentService</code> handles representations of an OAuth 2.0 "consent" to an Authorization request, which holds state related to the set of authorities granted to a client by the resource owner.
 It&#8217;s the same story as before: there&#8217;s schema on the classpath (<code>org/springframework/security/oauth2/server/authorization/oauth2-authorization-consent-schema.sql</code>) but it doesn&#8217;t work with PostgresSQL and, importantly, even if it did it would fail on the second run through because Spring Boot would try to define the table twice, in effect.
-So we&#8217;ll modify it. Create a file <code>src/main/resources/sql/schema/oauth2-authorization-consent-schema.sql</code>.
+So we&#8217;ll modify it.
+Create a file <code>src/main/resources/sql/schema/oauth2-authorization-consent-schema.sql</code>.
 The changes we&#8217;ve made replace all <code>blob</code> types with <code>text</code>.</p>
 </div>
 <div class="listingblock">
@@ -1493,10 +1527,19 @@ The changes we&#8217;ve made replace all <code>blob</code> types with <code>text
 <div class="sect3">
 <h4 id="_the_http_sessions_themselves">The HTTP Sessions themselves</h4>
 <div class="paragraph">
-<p>The final piece of the persistence pie is to persist the actual HTTP sessions themselves. Spring Authorization Server assumes a Servlet container is present somewhere. By default, Spring Boot uses Apache Tomcat, though that&#8217;s very configurable. And Apache Tomcat, in turn, provides session management features consistent with the HTTP Servlet specification. It&#8217;s even got pluggable HTTP session management, meaning you can plugin other implementations of Apache Tomcat&#8217;s proprietary abstraction. But this isn&#8217;t easy, or portable. Indeed, any web server is going to have some rudimentary HTTP session management, but session clustering and replication, consistency checks, etc., are not their _raison d&#8217;être: serving HTTP requests is.</p>
+<p>The final piece of the persistence pie is to persist the actual HTTP sessions themselves.
+Spring Authorization Server assumes a Servlet container is present somewhere.
+By default, Spring Boot uses Apache Tomcat, though that&#8217;s very configurable.
+And Apache Tomcat, in turn, provides session management features consistent with the HTTP Servlet specification.
+It&#8217;s even got pluggable HTTP session management, meaning you can plugin other implementations of Apache Tomcat&#8217;s proprietary abstraction.
+But this isn&#8217;t easy, or portable.
+Indeed, any web server is going to have some rudimentary HTTP session management, but session clustering and replication, consistency checks, etc., are not their _raison d&#8217;être: serving HTTP requests is.</p>
 </div>
 <div class="paragraph">
-<p>Spring Session can help. It wraps the containers' default <code>HttpSession</code>. All interactions you have pass through the wrapper, which in turn delegates to any of a number of implementations backed by technology that is far faster and more reliable in the ways of making data consistently available.You can use implementations for, among other things, Hazelcast, Redis, and of course any 'ol SQL <code>DataSource</code>. We&#8217;re choosing to continue to leverage our investment in PostgreSQL, so we&#8217;ll use the Spring Session JDBC module.</p>
+<p>Spring Session can help.
+It wraps the containers' default <code>HttpSession</code>.
+All interactions you have pass through the wrapper, which in turn delegates to any of a number of implementations backed by technology that is far faster and more reliable in the ways of making data consistently available.You can use implementations for, among other things, Hazelcast, Redis, and of course any 'ol SQL <code>DataSource</code>.
+We&#8217;re choosing to continue to leverage our investment in PostgreSQL, so we&#8217;ll use the Spring Session JDBC module.</p>
 </div>
 <div class="paragraph">
 <p>Add the following dependency to the build:</p>
@@ -1507,7 +1550,10 @@ The changes we&#8217;ve made replace all <code>blob</code> types with <code>text
 </div>
 </div>
 <div class="paragraph">
-<p>There is a property, <code>spring.session.jdbc.initialize-schema=always</code>, that once specified will cause Spring Session to install the JDBC schema for you in the database. It worked for me (surprise!), in PostgreSQL. But, I just really want the schema to all be in one place where I can version control it, audit it, etc, so here&#8217;s the schema. Create a file <code>src/main/resources/sql/schema/spring-session-jdbc.sql</code>.</p>
+<p>There is a property, <code>spring.session.jdbc.initialize-schema=always</code>, that once specified will cause Spring Session to install the JDBC schema for you in the database.
+It worked for me (surprise!), in PostgreSQL.
+But, I just really want the schema to all be in one place where I can version control it, audit it, etc, so here&#8217;s the schema.
+Create a file <code>src/main/resources/sql/schema/spring-session-jdbc.sql</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1539,7 +1585,11 @@ The changes we&#8217;ve made replace all <code>blob</code> types with <code>text
 </div>
 </div>
 <div class="paragraph">
-<p>And that&#8217;s it!  Restart the Spring Authorization Server. Now you can run more than one instance of the Spring Authorization Server behind a load balancer, and no matter to which instance a client and its cookies present themselves, the container will resolve the session from the PostgreSQL database. By the way, is now a good time to remind you not to stash sensitive stuff in the HTTP session? You never know when it&#8217;s going to be serialized to some datastore&#8230;&#8203;</p>
+<p>And that&#8217;s it!
+Restart the Spring Authorization Server.
+Now you can run more than one instance of the Spring Authorization Server behind a load balancer, and no matter to which instance a client and its cookies present themselves, the container will resolve the session from the PostgreSQL database.
+By the way, is now a good time to remind you not to stash sensitive stuff in the HTTP session?
+You never know when it&#8217;s going to be serialized to some datastore&#8230;&#8203;</p>
 </div>
 </div>
 </div>
@@ -1549,7 +1599,9 @@ The changes we&#8217;ve made replace all <code>blob</code> types with <code>text
 <h2 id="_protecting_a_simple_http_api">Protecting a Simple HTTP API</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Let&#8217;s build an HTTP API. Honestly, this is just a pretense to have something to secure with the Spring Security OAuth support, so we&#8217;ll make this quick. First, go to the <a href="https://start.spring.io">Spring Initializr</a>, and then add the following dependencies: `</p>
+<p>Let&#8217;s build an HTTP API.
+Honestly, this is just a pretense to have something to secure with the Spring Security OAuth support, so we&#8217;ll make this quick.
+First, go to the <a href="https://start.spring.io">Spring Initializr</a>, and then add the following dependencies: `</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1574,10 +1626,12 @@ The changes we&#8217;ve made replace all <code>blob</code> types with <code>text
 </ul>
 </div>
 <div class="paragraph">
-<p>I gave the newly minted project a group of <code>bootiful</code> and named it <code>api</code>. Click <code>Generate</code>, unzip the newly minted <code>.zip</code> file, and then open the project in your IDE.</p>
+<p>I gave the newly minted project a group of <code>bootiful</code> and named it <code>api</code>.
+Click <code>Generate</code>, unzip the newly minted <code>.zip</code> file, and then open the project in your IDE.</p>
 </div>
 <div class="paragraph">
-<p>The domain&#8217;s a trivial one: customer data, like a CRM. Each <code>Customer</code> entity has an <code>id</code> field, a <code>name</code> field, and an <code>email</code>.</p>
+<p>The domain&#8217;s a trivial one: customer data, like a CRM.
+Each <code>Customer</code> entity has an <code>id</code> field, a <code>name</code> field, and an <code>email</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1657,7 +1711,14 @@ The changes we&#8217;ve made replace all <code>blob</code> types with <code>text
 </div>
 </div>
 <div class="paragraph">
-<p>And, finally, we&#8217;ve got a little integration that sends a message using the AMQP protocol via RabbitMQ to another service called <code>processor</code>. We&#8217;ll introduce that thing later. The idea is that you&#8217;ll be able to click a button to get some sort of email sent to each user. I haven&#8217;t really thought out what sort of email. Just use your imagination. Sending email is one of those things you don&#8217;t necessarily want to do in the hot path of handling HTTP requests. It takes a while, is prone to failing for no good reason, etc. It&#8217;s one of those things that might also scale independently of the HTTP API itself, so we&#8217;ve put it on the other end of a message queue.</p>
+<p>And, finally, we&#8217;ve got a little integration that sends a message using the AMQP protocol via RabbitMQ to another service called <code>processor</code>.
+We&#8217;ll introduce that thing later.
+The idea is that you&#8217;ll be able to click a button to get some sort of email sent to each user.
+I haven&#8217;t really thought out what sort of email.
+Just use your imagination.
+Sending email is one of those things you don&#8217;t necessarily want to do in the hot path of handling HTTP requests.
+It takes a while, is prone to failing for no good reason, etc.
+It&#8217;s one of those things that might also scale independently of the HTTP API itself, so we&#8217;ve put it on the other end of a message queue.</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -1666,13 +1727,18 @@ The changes we&#8217;ve made replace all <code>blob</code> types with <code>text
 <div class="title">Tip</div>
 </td>
 <td class="content">
-This is what we used to call a backoffice process. I&#8217;m calling it <code>processor</code>, because I&#8217;m amazing with names, like everyone on the Spring team is. We named our MVC framework Spring MVC, our data framework Spring Data, our Batch framework Spring Batch.. well, you get the idea. (Don&#8217;t ask about Spring Boot, tho!)
+This is what we used to call a backoffice process.
+I&#8217;m calling it <code>processor</code>, because I&#8217;m amazing with names, like everyone on the Spring team is.
+We named our MVC framework Spring MVC, our data framework Spring Data, our Batch framework Spring Batch.. well, you get the idea.
+(Don&#8217;t ask about Spring Boot, tho!)
 </td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p>Requests originate here in this controller. Each request contains a <code>Customer</code> payload, and header, <code>jwt</code>, which contains the JWT associated with the current authenticated user. We&#8217;ll use that JWT later to validate the request is from a trusted, authenticated, user.</p>
+<p>Requests originate here in this controller.
+Each request contains a <code>Customer</code> payload, and header, <code>jwt</code>, which contains the JWT associated with the current authenticated user.
+We&#8217;ll use that JWT later to validate the request is from a trusted, authenticated, user.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1703,8 +1769,9 @@ This is what we used to call a backoffice process. I&#8217;m calling it <code>pr
     <span class="o">}</span>
 
     <span class="nd">@PostMapping</span><span class="o">(</span><span class="s">"/email"</span><span class="o">)</span>
-    <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="nf">email</span><span class="o">(</span><span class="nd">@AuthenticationPrincipal</span> <span class="nc">Jwt</span> <span class="n">jwt</span><span class="o">,</span>
-                              <span class="nd">@RequestParam</span> <span class="nc">Integer</span> <span class="n">customerId</span><span class="o">)</span> <span class="o">{</span>
+    <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="nf">email</span><span class="o">(</span>
+            <span class="nd">@AuthenticationPrincipal</span> <span class="nc">Jwt</span> <span class="n">jwt</span><span class="o">,</span>
+            <span class="nd">@RequestParam</span> <span class="nc">Integer</span> <span class="n">customerId</span><span class="o">)</span> <span class="o">{</span>
         <span class="kt">var</span> <span class="n">token</span> <span class="o">=</span> <span class="n">jwt</span><span class="o">.</span><span class="na">getTokenValue</span><span class="o">();</span>
         <span class="kt">var</span> <span class="n">message</span> <span class="o">=</span> <span class="nc">MessageBuilder</span>
                 <span class="o">.</span><span class="na">withPayload</span><span class="o">(</span><span class="n">repository</span><span class="o">.</span><span class="na">findCustomerById</span><span class="o">(</span><span class="n">customerId</span><span class="o">))</span>
@@ -1717,7 +1784,8 @@ This is what we used to call a backoffice process. I&#8217;m calling it <code>pr
 </div>
 </div>
 <div class="paragraph">
-<p>And there&#8217;s a bit of Spring Integration plumbing to route those requests to our RabbitMQ broker running in a separate process. This <code>IntegrationFlow</code> looks at requests (which come in the shape of a <code>Message&lt;T&gt;</code> object, which has headers and a payload) coming in from the injected <code>MessageChannel</code>, transforms them into JSON data, and then sends them, along with a JWT token associated to the current authenticated user, on to the broker, where it&#8217;ll eventually get delivered to the consumer, <code>processor</code>.</p>
+<p>And there&#8217;s a bit of Spring Integration plumbing to route those requests to our RabbitMQ broker running in a separate process.
+This <code>IntegrationFlow</code> looks at requests (which come in the shape of a <code>Message&lt;T&gt;</code> object, which has headers and a payload) coming in from the injected <code>MessageChannel</code>, transforms them into JSON data, and then sends them, along with a JWT token associated to the current authenticated user, on to the broker, where it&#8217;ll eventually get delivered to the consumer, <code>processor</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1762,7 +1830,9 @@ This is what we used to call a backoffice process. I&#8217;m calling it <code>pr
 <div class="colist arabic">
 <ol>
 <li>
-<p>inbound adapters translate events from the real world into Spring Framework <code>Message&lt;T&gt;</code> objects. Outbound adapters translate <code>Message&lt;T&gt;</code> objects into events in the real world. This adapter lets us interface with RabbitMQ via the AMQP protocol.</p>
+<p>inbound adapters translate events from the real world into Spring Framework <code>Message&lt;T&gt;</code> objects.
+Outbound adapters translate <code>Message&lt;T&gt;</code> objects into events in the real world.
+This adapter lets us interface with RabbitMQ via the AMQP protocol.</p>
 </li>
 <li>
 <p>In this case, messages pass through the <code>MessageChannel</code>&#8230;&#8203;</p>
@@ -1776,10 +1846,11 @@ This is what we used to call a backoffice process. I&#8217;m calling it <code>pr
 </ol>
 </div>
 <div class="paragraph">
-<p>We&#8217;re using Spring Security&#8217;s Resource Server support to protect requests to the API, rejecting requests that don&#8217;t have a valid OAuth 2 token. It does this by connecting to the OAuth 2 IDP (our amazing Spring Authorization Server instance) and validating the JWT.</p>
+<p>We&#8217;re using Spring Security&#8217;s Resource Server support to protect requests to the API, rejecting requests that don&#8217;t have a valid OAuth 2 token.
+It does this by connecting to the OAuth 2 IDP (our amazing Spring Authorization Server instance) and validating the JWT.</p>
 </div>
 <div class="paragraph">
-<p>The Spring Security Resource Server support, the Spring Data support, the Spring Integration AMQP support, all of it requires configuration, which brings us to our <code>application.properties</code>:</p>
+<p>The Spring Security Resource Server support, the Spring Data support, the Spring Integration AMQP support, all of it requires configuration, which brings us to our <code>application.properties</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1812,9 +1883,121 @@ This is what we used to call a backoffice process. I&#8217;m calling it <code>pr
 <p>and the PostgresSQL database&#8230;&#8203;</p>
 </li>
 <li>
-<p>the Spring Authorization Server is already running on port <code>8080</code>, so we&#8217;ll need to run this Java application on port <code>8081</code>. (Remember that!)</p>
+<p>the Spring Authorization Server is already running on port <code>8080</code>, so we&#8217;ll need to run this Java application on port <code>8081</code>.
+(Remember that!)</p>
 </li>
 </ol>
+</div>
+<div class="paragraph">
+<p>With all that in place, you should be able to start the application.
+It&#8217;s got a REST endpoint.
+You can try it out by hitting the new <code>/customers</code> endpoint that we created.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="shell">curl http://localhost:8081/customers</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>But it fails!
+Which is good.
+It fails because it&#8217;s an authenticated request.
+We need a valid JWT token.
+We can get one because, when we registerde the client with the Spring Authorization Server, we listed <code>client_credentials</code> as an authorized grant type.
+This in turn allows us to make a request without a user context.
+And if there&#8217;s no user, then there&#8217;s no need to verify the user, and thus no need for a browser or a web page or anything.
+We only need the client ID and client secret: <code>crm</code>/<code>crm</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="shell">curl <span class="nt">-X</span> POST <span class="se">\</span>
+     <span class="nt">-H</span> <span class="s2">"Authorization: Basic </span><span class="si">$(</span><span class="nb">echo</span> <span class="nt">-n</span> <span class="s1">'crm:crm'</span> | <span class="nb">base64</span><span class="si">)</span><span class="s2">"</span> <span class="se">\</span>
+     <span class="nt">-H</span> <span class="s2">"Content-Type: application/x-www-form-urlencoded"</span> <span class="se">\</span>
+     <span class="nt">-d</span> <span class="s2">"grant_type=client_credentials&amp;scope=user.read"</span> <span class="se">\</span>
+     http://localhost:8080/oauth2/token</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>That should dump a token in a JSON document.
+On my machine I got this very long JSON document that I&#8217;ve abbreviated for you here.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="json"><span class="p">{</span><span class="nl">"access_token"</span><span class="p">:</span><span class="s2">"eyJraWQiOiI4YzQyNGU...Qy1Fg"</span><span class="p">,</span><span class="nl">"scope"</span><span class="p">:</span><span class="s2">"user.read"</span><span class="p">,</span><span class="nl">"token_type"</span><span class="p">:</span><span class="s2">"Bearer"</span><span class="p">,</span><span class="nl">"expires_in"</span><span class="p">:</span><span class="mi">299</span><span class="p">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The important bit is the <code>access_token</code> attribute.
+If you have the  <code>jq</code> command line utility installed, you can extract out the <code>access_token</code> like this</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="shell"><span class="nv">TOKEN</span><span class="o">=</span><span class="si">$(</span> curl <span class="nt">-X</span> POST <span class="se">\</span>
+     <span class="nt">-H</span> <span class="s2">"Authorization: Basic </span><span class="si">$(</span><span class="nb">echo</span> <span class="nt">-n</span> <span class="s1">'crm:crm'</span> | <span class="nb">base64</span><span class="si">)</span><span class="s2">"</span> <span class="se">\</span>
+     <span class="nt">-H</span> <span class="s2">"Content-Type: application/x-www-form-urlencoded"</span> <span class="se">\</span>
+     <span class="nt">-d</span> <span class="s2">"grant_type=client_credentials&amp;scope=user.read"</span> <span class="se">\</span>
+     http://localhost:8080/oauth2/token | jq <span class="nt">-r</span>  .access_token <span class="si">)</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By the way, you could also issue the same request using Spring&#8217;s <code>RestTemplate</code> or <code>WebClient</code> or <code>RestClient</code>. Here&#8217;s the equivalent using ye ole <code>RestTemplate</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.api</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">com.fasterxml.jackson.databind.JsonNode</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.http.HttpEntity</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.http.HttpHeaders</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.http.MediaType</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.util.Assert</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.util.LinkedMultiValueMap</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.web.client.RestTemplate</span><span class="o">;</span>
+
+<span class="kd">class</span> <span class="nc">ClientCredentialsClient</span> <span class="o">{</span>
+
+    <span class="nc">String</span> <span class="nf">getJwtToken</span><span class="o">(</span><span class="nc">RestTemplate</span> <span class="n">restTemplate</span><span class="o">,</span> <span class="nc">String</span> <span class="n">clientId</span><span class="o">,</span> <span class="nc">String</span> <span class="n">clientSecret</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kt">var</span> <span class="n">headers</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HttpHeaders</span><span class="o">();</span>
+        <span class="n">headers</span><span class="o">.</span><span class="na">setBasicAuth</span><span class="o">(</span><span class="n">clientId</span><span class="o">,</span> <span class="n">clientSecret</span><span class="o">);</span>
+        <span class="n">headers</span><span class="o">.</span><span class="na">setContentType</span><span class="o">(</span><span class="nc">MediaType</span><span class="o">.</span><span class="na">APPLICATION_FORM_URLENCODED</span><span class="o">);</span>
+
+        <span class="kt">var</span> <span class="n">body</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">LinkedMultiValueMap</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">String</span><span class="o">&gt;();</span>
+        <span class="n">body</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"grant_type"</span><span class="o">,</span> <span class="s">"client_credentials"</span><span class="o">);</span>
+        <span class="n">body</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"scope"</span><span class="o">,</span> <span class="s">"user.read"</span><span class="o">);</span>
+
+        <span class="kt">var</span> <span class="n">entity</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HttpEntity</span><span class="o">&lt;&gt;(</span><span class="n">body</span><span class="o">,</span> <span class="n">headers</span><span class="o">);</span>
+        <span class="kt">var</span> <span class="n">url</span> <span class="o">=</span> <span class="s">"http://localhost:8080/oauth2/token"</span><span class="o">;</span>
+        <span class="kt">var</span> <span class="n">response</span> <span class="o">=</span> <span class="n">restTemplate</span><span class="o">.</span><span class="na">postForEntity</span><span class="o">(</span><span class="n">url</span><span class="o">,</span> <span class="n">entity</span><span class="o">,</span> <span class="nc">JsonNode</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+        <span class="nc">Assert</span><span class="o">.</span><span class="na">state</span><span class="o">(</span><span class="n">response</span><span class="o">.</span><span class="na">getStatusCode</span><span class="o">().</span><span class="na">is2xxSuccessful</span><span class="o">(),</span> <span class="s">"the response needs to be 200x"</span><span class="o">);</span>
+        <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="na">getBody</span><span class="o">().</span><span class="na">get</span><span class="o">(</span><span class="s">"access_token"</span><span class="o">).</span><span class="na">asText</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can use this token to then issue a request to the HTTP server:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="shell">curl <span class="nt">-H</span> <span class="s2">"Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">"</span> http://localhost:8081/customers</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>And there&#8217;s the data! At long last, reunited with the data. Feels good doesn&#8217;t it? We&#8217;ve got an HTTP API that is secure and all we had to do was specify the <code>issuer-uri</code> int he property file. Our Spring Authorization Server is paying dividends already! We&#8217;ve got honest-to-goodness identity management, security, and more, all for the cost of one lousy little property. And if we want to protect any other microservices, its the same story. One little <code>issuer-uri</code> property, and our services  will automatically be protected  and automatically be able to work with the identities in the centralized Spring Authorization Server.</p>
+</div>
+<div class="paragraph">
+<p>I love this for us. We did something amazing here. Do you feel the possibilities? We stood up one little Spring Authorization Server and suddenly every microservice in our system can be protected. No need to redundantly duplicate the requests.</p>
+</div>
+<div class="paragraph">
+<p>We sort of cheated here, though. We got a token using the <code>client_credentials</code> authorization grant type. No user context, remember? We <em>want</em> users. That&#8217;s sort of the point of this whole exercise. Somewhere, somehow, we&#8217;ll need to get a user involved. Once they&#8217;re involved, they&#8217;ll have a token that we can use to make requests to this resource server. The thing that originates the token, that forces the redirect to the OAuth IDP where the user will be asked to consent? That&#8217;s called an OAuth 2 client. An OAuth 2 client is both an OAuth 2 resource server, in that it&#8217;ll reject invalid requests, <em>and</em> it has this extra ability to initiate and handle the OAuth flow - the "OAuth dance" - we looked at earlier when we discussed Yelp.com&#8217;s authentication flow. Let&#8217;s build one.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_the_gateway_client">The Gateway Client</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In our super OAuth-secured onion, this next microservice - the <code>gateway</code> -  is the outermost layer. It is the first port-of-call for all requests intended for our system.</p>
 </div>
 </div>
 </div>

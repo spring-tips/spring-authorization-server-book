@@ -19,10 +19,10 @@ public class GatewayApplication {
     @Bean
     SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         http
-                .authorizeExchange((authorize) -> authorize.anyExchange().authenticated())
-                .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .oauth2Login(Customizer.withDefaults())
-                .oauth2Client(Customizer.withDefaults());
+                .authorizeExchange((authorize) -> authorize.anyExchange().authenticated())//<1>
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)// <2>
+                .oauth2Login(Customizer.withDefaults())//<3>
+                .oauth2Client(Customizer.withDefaults()); // <4>
         return http.build();
     }
 
