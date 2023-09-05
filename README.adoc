@@ -458,7 +458,21 @@ Remember we're going to be securing this with Spring Security's OAuth support, a
 include::api/src/main/java/bootiful/api/MeHttpController.java[]
 -----
 
-And, finally, we've got a little integration that sends a message using the AMQP protocol via RabbitMQ to another service called `processor`. We'll introduce that thing later. The idea is that you'll be able to click a button to get some sort of email sent to each user. I haven't really thought out what sort of email. Just use your imagination. Sending email is one of those things you don't necessarily want to do in the hot path of handling HTTP requests. It takes a while, is prone to failing for no good reason, etc. It's one of those things that might also scale independently of the HTTP API itself, so we've put it on the other end of a message queue. Requests originate here, though.
+And, finally, we've got a little integration that sends a message using the AMQP protocol via RabbitMQ to another service called `processor`. We'll introduce that thing later. The idea is that you'll be able to click a button to get some sort of email sent to each user. I haven't really thought out what sort of email. Just use your imagination. Sending email is one of those things you don't necessarily want to do in the hot path of handling HTTP requests. It takes a while, is prone to failing for no good reason, etc. It's one of those things that might also scale independently of the HTTP API itself, so we've put it on the other end of a message queue.
 
 
+Requests originate here in this controller. Each request contains a `Customer` payload, and header, `jwt`, which contains the JWT associated with the current authenticated user. We'll use that JWT later to validate the request is from a trusted, authenticated, user.
 
+
+[source,java]
+-----
+include::api/src/main/java/bootiful/api/EmailController.java[]
+-----
+
+And there's a bit of Spring Integration plumbing to route those requests to our RabbitMQ broker running in a separate process. This `IntegrationFlow` looks at requests (which come in the shape of a `Message<T>` object, which has headers and a payload) coming in from the injected `MessageChannel`, transforms them into JSON data, and then sends them, along with a JWT token associated to the current authenticated user, on to the broker, where it'll eventually get delivered to the consumer, `processor`.
+
+
+[source,java]
+-----
+include::api/src/main/java/bootiful/api/EmailRequestsIntegrationFlowConfiguration.java[]
+-----
