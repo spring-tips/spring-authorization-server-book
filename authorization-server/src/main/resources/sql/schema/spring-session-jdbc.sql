@@ -9,9 +9,9 @@ create table if not exists spring_session
     expiry_time           bigint                    not null,
     principal_name        character varying(100)
 );
-create unique index spring_session_ix1 on spring_session using btree (session_id);
-create index spring_session_ix2 on spring_session using btree (expiry_time);
-create index spring_session_ix3 on spring_session using btree (principal_name);
+create unique index if not exists spring_session_ix1 on spring_session using btree (session_id);
+create index if not exists spring_session_ix2 on spring_session using btree (expiry_time);
+create index if not exists spring_session_ix3 on spring_session using btree (principal_name);
 
 -- session attributes
 create table if not exists spring_session_attributes
