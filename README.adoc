@@ -679,15 +679,13 @@ Let's build one.
 
 == The Gateway Client
 
-In our super secure OAuth onion, this next microservice - the `gateway` - is the outermost layer.
-It is the first port-of-call for all requests intended for our system.
-When visitors to our site punch in the domain name for our system into a browser, it'll resolve to a loadbalancer serving this gateway service.
-This is where the users of our system will come and so it is here we'll want to originate an OAuth token in the browser.
+In our super secure OAuth onion, this next microservice, the `gateway`, is the outermost layer.
+It is the first port-of-call for all requests destined for the microservices in our system.
+When visitors to our site punch in the domain name for our system into a browser, it'll resolve to a loadbalancer serving this gateway service, and it is here where we'll  originate an OAuth token.
 This service is also a gateway, powered by Spring Cloud Gateway.
 The gateway acts as a proxy, allowing us to forward requests to different hosts and ports, concealing from the user that the responses they're seeing are from different services.
 
-There's very little Java code in the gateway module.
-The `gateway` service's job is entirely to handle the OAuth dance if it detects that the request is not authenticated and to proxy requests to two other HTTP endpoints: the `api` we just built, and have running on port `8081`, and the static HTML process running on port `8020`.
+The `gateway` service's job is entirely to handle the OAuth dance - if it detects that the request is not authenticated - and to proxy requests to two other HTTP endpoints: the `api` we just built, and have running on port `8081`, and the static HTML process running on port `8020`.
 
 Here's the routing table
 
@@ -708,7 +706,7 @@ Let's look at the Java code first.
 -----
 include::gateway/src/main/java/bootiful/gateway/SecurityConfiguration.java[]
 -----
-<1> you could probably get away with not definining this bean at all _if_ you were willing to deal with default behavior of CSRF tokens, which I am not. In the interest of simplicity, I'm disabling them, but in so doing I am also disabling all the other  things Spring Security assumed I wanted. So we will also go through and re-enable those things.
+<1> you could probably get away with not defining this bean at all _if_ you were willing to deal with default behavior of CSRF tokens, which I am not. In the interest of simplicity, I'm disabling them, but in so doing I am also disabling all the other  things Spring Security assumed I wanted. So we will also go through and re-enable those things.
 <2> We want all HTTP requests to be authenticated...
 <3> ...and to disable the CSRF support...
 <4> ...and to re-enable OAuth 2 OIDC login support and the OAuth 2 client support. The OIDC login functionality is what triggers the OAuth dance we've talked about. The OAuth 2 client support  is what tells Spring Security, running in this process, as which OAuth 2 client requests for OIDC login should be done. We'll need to specify the particulars in the property configuration later.
