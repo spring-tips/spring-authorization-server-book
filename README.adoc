@@ -506,7 +506,6 @@ include::api/src/main/java/bootiful/api/CustomerRepository.java[]
 
 The Spring Data JDBC repository talks to a SQL table, called `customer`, whose definition we must specify.
 
-
 [source,sql]
 -----
 include::api/src/main/resources/schema.sql[]
@@ -518,7 +517,6 @@ Let's insert some `customer` records, just for good measure, so that we have som
 -----
 include::api/src/main/resources/data.sql[]
 -----
-
 
 And an HTTP controller that will return all that customer data...
 
@@ -681,7 +679,7 @@ Let's build one.
 
 In our super secure OAuth onion, this next microservice, the `gateway`, is the outermost layer.
 It is the first port-of-call for all requests destined for the microservices in our system.
-When visitors to our site punch in the domain name for our system into a browser, it'll resolve to a loadbalancer serving this gateway service, and it is here where we'll  originate an OAuth token.
+When visitors to our site punch in the domain name for our system into a browser, it'll resolve to a loadbalancer serving this gateway service, and it is here where we'll originate an OAuth token.
 This service is also a gateway, powered by Spring Cloud Gateway.
 The gateway acts as a proxy, allowing us to forward requests to different hosts and ports, concealing from the user that the responses they're seeing are from different services.
 
@@ -706,31 +704,455 @@ Let's look at the Java code first.
 -----
 include::gateway/src/main/java/bootiful/gateway/SecurityConfiguration.java[]
 -----
-<1> you could probably get away with not defining this bean at all _if_ you were willing to deal with default behavior of CSRF tokens, which I am not. In the interest of simplicity, I'm disabling them, but in so doing I am also disabling all the other  things Spring Security assumed I wanted. So we will also go through and re-enable those things.
+
+<1> you could probably get away with not defining this bean at all _if_ you were willing to deal with default behavior of CSRF tokens, which I am not.
+In the interest of simplicity, I'm disabling them, but in so doing I am also disabling all the other things Spring Security assumed I wanted.
+So we will also go through and re-enable those things.
 <2> We want all HTTP requests to be authenticated...
 <3> ...and to disable the CSRF support...
-<4> ...and to re-enable OAuth 2 OIDC login support and the OAuth 2 client support. The OIDC login functionality is what triggers the OAuth dance we've talked about. The OAuth 2 client support  is what tells Spring Security, running in this process, as which OAuth 2 client requests for OIDC login should be done. We'll need to specify the particulars in the property configuration later.
+<4> ...and to re-enable OAuth 2 OIDC login support and the OAuth 2 client support.
+The OIDC login functionality is what triggers the OAuth dance we've talked about.
+The OAuth 2 client support is what tells Spring Security, running in this process, as which OAuth 2 client requests for OIDC login should be done.
+We'll need to specify the particulars in the property configuration later.
 
-The security configuration is pretty straightforward. We're an OAuth client. We want to prompt users to login with a particular client. Once a user is authenticated, well, there's not much for them to see! We need Spring Cloud Gateway to connect our other HTTP services to the user visiting this `gateway` service.
+The security configuration is pretty straightforward.
+We're an OAuth client.
+We want to prompt users to login with a particular client.
+Once a user is authenticated, well, there's not much for them to see!
+We need Spring Cloud Gateway to connect our other HTTP services to the user visiting this `gateway` service.
 
-
-We'll configure two Spring Cloud Gateway _routes_. Each request has a predicate, optional filter(s), and a destination URI. The predicate defines how requests to the Spring Cloud Gateway service are matched, e.g.: does this request have a particular header or cookie, or a particlar path, or a particular virtual host? You may specify one or more filters that act on the incoming requests, changing it. Finally, the request, after it has passed through any and all filters, is sent to a final destination, which we specify with a URI.
+We'll configure two Spring Cloud Gateway _routes_.
+Each request has a predicate, optional filter(s), and a destination URI.
+The predicate defines how requests to the Spring Cloud Gateway service are matched, e.g.: does this request have a particular header or cookie, or a particlar path, or a particular virtual host?
+You may specify one or more filters that act on the incoming requests, changing it.
+Finally, the request, after it has passed through any and all filters, is sent to a final destination, which we specify with a URI.
 
 [source,java]
 -----
 include::gateway/src/main/java/bootiful/gateway/GatewayConfiguration.java[]
 -----
+
 <1> the first route matches all requests to `/api/**`, notes and forwards any OAuth JWTs to the backend service, and changes the path of the request from `gateway:8082/api/foo` to `api:8081/foo`, dropping the `/api/` bit.
 <2> the second route takes every other request and sends it unchecked on to the HTTP endpoint service up the static HTMl 5 and JavaScript assets.
 
-
-That's just about all the Java code for this service, but its role and importance in the architecture can not be overstated. Let's look at the property file that ties it all together.
-
+That's just about all the Java code for this service, but its role and importance in the architecture can not be overstated.
+Let's look at the property file that ties it all together.
 
 [source,properties]
 -----
 include::gateway/src/main/resources/application.properties[]
 -----
+
 <1> this process will run on port `8082`.
 <2> it will use the issuer URI to validate JWTs if it detects them
 <3> otherwise it will use this configuration to, acting as a client, inintiate an OIDC login to allow you to come up with a valid token.
+
+==  Your First Cup of Java
+
+"WARNING: Spoilers ahead!" That is what I think every chapter or indeed every bit of informative text should say upfront because, by its very nature, the new knowledge and insight gained from such a chapter spells out the nuances of the unknown topic that it treats.
+But, unfortunately, most texts forego that friendly warning.
+Well, I didn't: there are _spoilers_ ahead!
+
+Some of you will probably appreciate the warning.
+Because some of you have not upgraded to Java 11, let alone Java 17. I can only assume you are saving the surprise for some special day, years in the future?
+I don't know what the reason is, but I hope you're able to move up and over soon because Spring Framework 6 and Spring Boot 3 assume a Java 17 baseline.
+That means that not only do those generations of Spring support Java 17 features (as did the Spring Framework 5 and Spring Boot generations), they also use some Java 17 features in their source code.
+This book doesn't use Spring Framework 6 and Spring Boot 3 yet, but it will assume a Java 17 baseline for the code herein.
+
+Whatever the cause of your hesitation, this chapter contains _spoilers_!
+If you don't mind spoilers, let's dive right in!
+
+First things first: you need an OpenJDK distribution that works for you.
+The list of valid and viable distributions scrolls down to the floor and out the door, so I'll refer you to Fooojay.io's https://foojay.io/almanac/java-17/[handy version almanac for Java 17].
+One of my favorite tools for managing my Java installations on UNIX-y type operating systems is https://sdkman.io/[`sdkman`].
+It works on macOS, Windows Subsystem for Linux (WSL), Linux, and I'm sure other places besides.
+I use the https://www.graalvm.org/[GraalVM] distribution.
+GraalVM is an OpenJDK distribution with some extra features, including ahead-of-time native image compilation.
+To get that distribution, you might say:
+
+[source,shell]
+----
+sdk install java 17.0.7-graalce <1>
+sdk default java 17.0.7-graalce <2>
+----
+
+<1> the first command installs the latest version of the GraalVM distribution of Java 17
+<2> the second makes it the default installed distribution on my box so that all my interactions with Java are going to that distribution
+
+With that done, let's look at some neat features in Java's latest and greatest versions up until Java 17.
+
+=== Operations Improvements
+
+The newer versions of Java now support something called CDS Archives.
+CDS Archives essentially capture some of the invariant (but freshly computed) state from a given application and cache it for easy reuse on subsequent runs.
+I consistently shave 0.1 or 0.2 seconds from startup time when using CDS Archives.
+
+The newer versions of Java are also container aware.
+So, let's suppose you are running Docker images on your host machine, which has 32GB of RAM.
+You might configure the JRE with 2GB of RAM and errantly configure the Docker container with only 1GB of RAM.
+Java would see the 32GB and think it could allocate 2GB and then fail to startup.
+Java is aware of the container's limited RAM in newer versions and won't exceed it.
+
+Java Flight Recorder (JEP 328) monitors and profiles running Java applications.
+Even better, it does so with a low runtime footprint.
+Java Mission Control allows ingesting and visualizing Java Flight Recorder data.
+Java Mission Control takes Java's already stellar support for observability to the next level.
+
+=== Performance
+
+Java 17 is _fast_ and reliable.
+
+Java's garbage collector is the stuff of legend.
+It's fast, lightweight, and minimally invasive.
+It's also one of those things where, when it's improved, your application's runtime improves with it, for free.
+No recompilation is required.
+
+G1 has been the default garbage collector since Java 9, replacing the Parallel garbage collector in Java 8. It reduces pause times with the default Parallel GC from Java 8, though it may have lower throughput overall.
+Next, Java 11 introduced the ZGC garbage collector to reduce pauses further.
+Finally, Java 14 introduced the Shenandoah GC, which keeps pause times low and does so in a manner independent of the heap's size.
+
+And it's fast.
+I can't give you a specific number or anything because it is so highly workload-sensitive, but https://www.optaplanner.org/blog/2021/09/15/HowMuchFasterIsJava17.html[this post from the folks at OptaPlanner] is persuasive.
+They saw an average of 8.66% improvement for their CPU-intensive workloads when using the G1 GC, measured after a discarded 30 second warmup period.
+These numbers reflect the jump from Java 11 (not Java 8) to Java 17. I can only imagine the numbers from Java 8 to Java 17 are even better.
+And that number is just an average: some workloads improved by as much as 23%!
+
+=== Autocloseable
+
+Java manages most memory for you, but it can't be responsible for the state outside of the humble confines of the JVM.
+So, for example, you wouldn't like it if Java _garbage collected_ your connection to the database, and you wouldn't like it if Java garbage-collected your open socket connections without warning.
+Therefore, the interfaces you use to interact with these external resources typically have a `close()` method that you, the client, need to call when working the external resource finishes.
+
+You mustn't neglect to call that method!
+Don't be greedy!
+You're not greedy, are ya?
+You want to leave the JVM as clean as you found it.
+So, you write the boilerplate.
+We all know the boilerplate: open the resource; work with it; surround that work with a `try`/`catch`/`finally` block; catch any `Throwable` instances if (_when_?) something goes wrong; `close()` the resource if something goes wrong.
+Add the `close()` call in a `finally` block for extra robustness.
+All the while, handle the exceptions that might arise when you try to do anything, including calling `close()` the resource.
+You'll end up with one or more `try`/`catch` embedded within the outer `try`/`catch` blocks.
+
+Let's look at some examples.
+I'll read a file on the filesystem to demonstrate this new feature.
+But something needs to ensure that there's a file to read in the first place, so I've extracted all that out into a separate class, `Utils`:
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/closeable/Utils.java[]
+----
+
+<1> the contents of the file, using a handy multiline Java `String`
+<2> this method returns the `java.io.File` for the newly created temporary file
+<3> a convenience method to log errors.
+Do not rewrite this code!
+Otherwise, if you're doing things the old-fashioned way, you'll find yourself rewriting this a _lot_.
+
+Now, let's look at an example of what _not_ to do.
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/closeable/TraditionalResourceHandlingTest.java[]
+----
+
+<1>  from which file are we reading?
+<2> We need a reference to the `BufferedReader` outside of the scope of the `try`/`catch` block, but we don't want to initialize that reference until we're inside the `try`/`catch` block because it might incur an exception.
+<3> handle any errors.
+Bear in mind that this solution doesn't even attempt to field the errors and somehow recover.
+If there is _any_ error anywhere, then we abort.
+<4> also, make sure to close that `Reader`!
+Err, close that reader _if_ it's not `null`!
+Sorry, close that reader _if_ it's not `null` and also don't forget to handle any errors in the doing, either!
+Be kind, rewind!
+
+Yuck.
+We can do better with Java 7's `try-with-resources` construct.
+Let's rework the example accordingly.
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/closeable/TryWithResourcesTest.java[]
+----
+
+=== Type Inference
+
+Java 10 introduced type inference for variables given enough context.
+As a result, Java is a strongly typed language with less typing - pressing of keys - required.
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/typeinference/TypeInferenceTest.java[]
+----
+
+<1> both variable definitions contain a type of `Customer`.
+The compiler knows it, and you know it because the right side of the expression makes it clear.
+So, all things being equal, why not use the more concise version?
+<2> Indeed, in this case, the compiler knows _more_ about the type than it would before, particularly in the case of anonymous subclasses.
+Suppose you need a throwaway object in which to stash some data temporarily?
+If you created an anonymous subclass of `Object` and assigned it to a variable of type `Object`, there'd be no way to dereference fields defined on the anonymous subclass.
+Traditionally, there was no way to reify _anonymous_ subclass types because they were _anonymous_.
+But with `var`, you don't need to account for the type; you can let the compiler infer it.
+
+This last bit - reifying anonymous subclasses comes in particularly handy when you're working with Java 8 streams abstractions and want to avoid having a host of throwaway classes created as side effects to conduct your data across the transformations.
+
+The new `var` keyword can come in handy in a whole host of other smaller scenarios.
+You can use the `var` keyword for parameters in a lambda definition.
+It doesn't buy you much over just omitting `var` (or the type itself), except that you can now decorate the parameter with annotations.
+Neat!
+
+Lambdas are the one fly in the proverbial ointment, however.
+Java doesn't have structural lambdas like Scala, Kotlin, and other languages.
+Instead, you must assign the lambda to an instance of a functional interface like `java.util.function.Consumer<T>`.
+If the literal lambda syntax doesn't clarify what type that is, then the variable type definition itself must.
+So you can use `var` for every variable definition _except_ lambdas.
+It's so dissatisfying!
+The agony of having a column of nice, clean `var's punctuated occasionally with standard variable definitions just because those variables happen to be lambdas!
+There is a way around it with casts, but I admit it isn't much better.
+Let's look at some examples.
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/typeinference/LambdasAndTypeInferenceTest.java[]
+----
+
+<1> I can't use `var` here because the compiler doesn't know to which functional interface type the method reference, `delegate(String, Integer)`, should be assigned
+<2> I can use `var` here, but I've lost all the brevity of lambdas!
+<3> the only way I know around it is to cast the type like this.
+Ugh.
+
+I tend to use the cast form a lot.
+Your sensibilities may vary, and given how new this feature is, I wouldn't be surprised if my sensibilities change in the future with respect to this feature, as well.
+
+=== Enhanced Switch Expressions
+
+Java has a new _enhanced_ switch, which forms the basis of the gradual addition of _pattern amtching_ to the Java language.
+It simplifies things considerably:
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/switches/TraditionalSwitchExpressionTest.java[]
+----
+
+<1> `Emotion` is an `enum`.
+There are only two possible values (for this simple example that doesn't at all reflect the rich gradient of human emotions) for a variable of type `Emotion`: `HAPPY` and `SAD`.
+We have branches for all known states in this' switch' statement.
+The compiler is satisfied that we have covered every possible value, so it doesn't insist on a `default` branch to handle any unforeseen values.
+There are no unforeseen values.
+We say that we've _exhausted_ the range of values.
+<2> we define a variable to which we assign the results of our processing.
+<3> take care to `break` for each branch.
+Otherwise, the execution flow will drop down to other branches, producing undesirable side effects.
+
+The first example is a classic `switch` statement.
+There's nothing wrong, _per se_, but it's tedious, and I tend to avoid writing them.
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/switches/EnhancedSwitchExpressionTest.java[]
+----
+
+<1> there's no intermediate variable!
+Each branch produces a value, and that value is the result of the `switch` expression and can be assigned to a variable or, as I do here, returned in one fell swoop from the method as any other expression would.
+
+=== Multiline Strings
+
+This one is a super small feature that punches well above its weight: Java supports multiline `String`s: hooray!
+There are a million opportunities for multiline `String`s: SQL queries, HTML, Markdown, Asciidoctor, Velocity templating (such as for emails), unit testing, etc.
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/MultilineStringsTest.java[]
+----
+
+<1> The first example uses a multiline `String` to represent some HTML markup
+<2> The second variable recreates the same HTML markup, down to the padding and the newlines, but uses string concatenation and manually encodes newlines, as we used to have to do.
+
+In the example, both variables `multilines`, and `concatenated`, are identical, but I the multiline `String` is much easier to wrangle.
+
+Short and simple.
+
+=== Records
+
+Records are perhaps my second favorite new feature in Java.
+If you've ever used case classes in Scala, or data classes in Kotlin, you'll feel _almost_ right at home.
+
+Java introduced records, which are a new kind of type.
+Records, like enums, are a restricted form of a class.
+As a result, they're ideal for "plain data carriers," classes containing data not meant to be altered and only the most fundamental methods such as constructors and accessors.
+We'll use (and sometimes abuse) them _all_ the time in this book.
+They're wonderful time savers.
+Need to model a read-only entity in your database that has accessors for all the constituent fields, a constructor, a functional `toString` implementation, a valid `equals` implementation, and a valid `hashCode` implementation?
+You'd better get codin'!
+That'll take a while.
+Or, you could use something like Lombok to code-generate all of that for you based on the presence of a handful of annotations.
+Or, you could use records.
+
+Here's a trivial example.
+Suppose you want to return information about `Customer` entities _and_ their associated `Order` data.
+Unfortunately, Java doesn't support multiple return types or provide suitable tuple types, so you need to create something to hold both types.
+Records to the rescue!
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/records/SimpleRecordsTest.java[]
+----
+
+<1> these three `record` definitions define three new types, each with accessors, constructors, and internal storage.
+Scarcely more than three lines of code for three brand new types!
+<2> records also automatically expose accessor methods for the fields defined in the constructor.
+For example, if you want to read the `name` field of the `Customer` type, use `Customer#name()`.
+If you wish to read the `orders` field of the `CustomerOrders` type, use `orders()`.
+It took a while to accept that they they're in the form `x()`, and not in the form `getX()`, but I've come to love it.
+Mercifully, all the interesting libraries that need to know about this convention - JSON serializers, for example - already work well with it.
+
+Records make perfect sense for immutable, data-centric types.
+They alleviate a whole host of boilerplate code.
+In the first edition of this book, I used the https://projectlombok.org[Lombok project] (which is brilliant) to synthesize the getters, setters, no-args, and all-arg constructors with just a few annotations.
+It worked, but it was still a handful of lines instead of the one-liners enabled by Java records.
+I love records!
+
+I still occasionally use Lombok for other things, but it's nice to reduce my reliance on it further.
+
+More controversially, I also sometimes use records to implement services and components quickly.
+After all, you can have methods on a record.
+Of course, record implementations can't extend classes, but one doesn't need to do that a lot.
+There is the undesirable side-effect of having accessor-methods that expose the state - `dataSource()` or whatever - but, for whatever reason, I don't care.
+It doesn't cost me anything when I use it.
+If my code grows large enough to need hierarchies or interface implementations, I'll change it.
+If the code grows enough to worry about the leaking state, I'll change it.
+But the immediate, short-term effect of having more concise, approachable, readable code seems to make sense to me.
+Maybe one day that'll change?
+
+Behind the scenes, a record creates a default constructor whose parameters match the types and rarity of the record header.
+Records can have other constructors, but they need to delegate to the default constructor.
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/records/RecordConstructorsTest.java[]
+----
+
+<1> the default constructor is the one defined in the record header
+<2> If you want to act on the fields passed in the default constructor, create a constructor with no parameters and do the work there.
+This no-parameter constructor and the record header taken together are the default constructor.
+If you want to have an alternative constructor, you can do that so long as you forward to the default constructor.
+I use the default constructor to initialize the `id` to `-1`.
+This way, it's impossible to initialize the record with a `null` `id` field.
+
+=== Sealed Types
+
+Sealed types are a novel feature that hasn't reached its full potential yet.
+The basic idea is to constrain the number of subtypes for a given type.
+Why would you do this?
+Well, it's all a bit _exhausting_!
+Or should I say, it's all about exhausting the extent to which the runtime needs to support virtual (polymorphic) dispatch?
+
+Sound complicated?
+It's not really.
+Ever have a method in a parent type that the child type overrides?
+The ability to call that method on an instance of that child type, in terms of the parent type's interface, is called polymorphism.
+
+Polymorphic, or _virtual_, dispatch requires a lookup in the virtual function table, which in theory takes time.
+The runtime wouldn't have to do that if it could say conclusively that a given type can never be subclassed, such as with a final type.
+The `final` keyword is a bit of a sledgehammer, however.
+It forecloses entirely on the possibility of on any kind whatsoever subclassing the final type.
+You might have a hierarchy but wish to keep it shallow, and well-known.
+Alternatively, you could make everything package-private (simply omit `public` modifier on the class), which means that only types in the same class could subclass the type.
+This would probably work, but of course, somebody else could come along and create types in the same package in their `.jar`.
+There's traditionally not been a lot of great ways to keep a hierarchy shallow until now.
+Sealed types can help.
+They let you constrain the number of subclasses to a known set.
+
+Let's look at an example that is building out a
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/SealedTypesTest.java[]
+----
+
+<1>  we'll start with a `Shape` and permit two direct subclasses, `Oval` and `Polygon`.
+<2> a subclass of a sealed type must be `final` or `sealed` and explicitly name its subclasses.
+A sealed type's subclasses may themselves be sealed types, permitting further subtypes.
+<3> the following declaration does not compile, as it is not one of the explicitly permitted subclasses
+<4> the `describeShape` method is written so that we can exhaustively handle every subclass.
+
+Sealed types help the compiler, too.
+The compiler can exhaustively determine every case of every possible subtype, which has implications for the future, as Java looks to better incorporate simple pattern matching into Java.
+Imagine the possibilities here, and you can kind of see how sealed types might play with the new `switch` expressions, too.
+
+Right now, I don't recommend using `sealed` types.
+I tend to think types should be open by default.
+You just don't know what scenario will arise in the future that changes your fundamental assumptions.
+Furthermore, sealed subtypes are `final`, inhibiting tools like Spring and Hibernate, which must subclass your types to proxy them.
+
+=== Smart Casts
+
+This feature is one of those things that I don't use all that often in application code, but it's pretty useful when writing infrastructure code when dealing with polymorphism.
+Essentially, the feature spares you from having to create an intermediate variable and casting after you've already done an `instanceof` check.
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/SmartCastsTest.java[]
+----
+
+<1> this is a classic example, where we determine the subtype and then create a variable cast to the appropriate type.
+If ever we change the type definition, we have to replace it both in the cast and in the `instanceof` check.
+<2> the more excellent, newer alternative uses a smart-cast, sparing us the extra variable and cast.
+
+This feature looks almost exactly like a similar feature in Kotlin, and I love it.
+
+=== Function Interfaces, Lambdas  and Method References
+
+Java 8 introduced lambdas.
+They let us treat functions as first-class citizens that can be assigned and passed around.
+Well, almost.
+In Java, lambdas are slightly limited; they're _not_ first-class citizens.
+But, close enough!
+They _must_ have return values and input parameters compatible with the method signature of the sole abstract method of an interface.
+This interface, one with a single abstract method intended for use as a lambda, is called a _functional interface_.
+(Interfaces may also have _default_, non-abstract methods where the interface provides an implementation.)
+
+There are some very convenient and oft-used functional interfaces in the JDK itself.
+Here are some of my favorites.
+
+* `java.util.function.Function<I, O>`: an instance of this interface accepts a type `I` and returns a type ` O'.
+This is useful as a general-purpose function.
+Every other function could, in theory, be generalized from this.
+Thankfully, there's no need for that as several other handy functional interfaces exist.
+* `java.util.function.Predicate<T>`: an instance of this interface accepts a type `T` and returns a `boolean`.
+This is an ideal filter when you're trying to sift through a stream of values.
+* `java.util.function.Supplier<T>`: A supplier accepts no input and returns an output.
+* `java.util.function.Consumer<T>`: A consumer is the mirror image of a `Supplier<T>`; it takes an input and returns no output.
+
+You can also create and use your custom functional interfaces.
+Let's look at some examples.
+
+[source,java,indent=0]
+----
+include::java/src/test/java/bootiful/javareloaded/LambdasTest.java[]
+----
+
+<1> You can use existing functional interfaces in the JDK...
+<2> you can define your own interfaces and use them as functional interfaces
+<3> You may use `var` and lambdas together with this (admittedly unsightly) cast.
+<4> and if you have existing methods whose return types and input parameters line up with the single abstract method of a functional interface, then you can create a method reference and assign it to an instance of that type.
+
+
+=== Virtual Threads and Loom
+
+I wrote a book called _Reactive Spring_, which embraces the promise of reactive programming on the JVM in terms of the vast Spring ecosystem support around it. I love that book. It taught me about three incredible opportunities in reactive programming.
+
+==== Scalable Input and Output (IO)
+Reactive programming introduces a functional programming model that gives a reactive runtime more fine grained opportunities to move work on and off threads. Threads on the JVM, prior to Java 21, have been expensive to create. They take up a good deal in RAM - about two megabytes per thread, making it prohibitive to create many of them.  Prior to Java 21, traditional input and output (using `java.io.InputStream` and `java.io.OutputStream`) was said to be _blocking_. Suppose you have a Java thread in which you're reading data from a network client. You call `InputStream#read()`, but can't be sure it will return in time.
+
+* **composition**:
+* **robustness**:
+
+// show the network server example u wrote yesterday
+
+
+=== Next Steps
+
+I didn't intend for this chapter to be a thorough introduction to all things Java.
+Just an amuse-bouche for all the cool stuff you might see me do in my code independent of Spring.
+Java 17 is a very compelling way to write code, and it's no coincidence that it's starting to look more and more like languages like Kotlin, which is also a lovely way to write Spring Boot-based applications.
+Hopefully, this chapter has been persuasive, and you're ready to turn the page.

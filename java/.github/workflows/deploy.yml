@@ -1,0 +1,13 @@
+name: Build 
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  compliance:
+    uses: reactive-spring-book/actions/.github/workflows/default-flow.yml@main
+    secrets: inherit
+    
