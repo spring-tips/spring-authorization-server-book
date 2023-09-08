@@ -20,7 +20,7 @@ create table if not exists spring_session_attributes
     attribute_name     character varying(200) not null,
     attribute_bytes    bytea                  not null,
     primary key (session_primary_id, attribute_name),
-    foreign key (session_primary_id) references public.spring_session (primary_id)
+    foreign key (session_primary_id) references spring_session (primary_id)
         match simple on update no action on delete cascade
 );
 
