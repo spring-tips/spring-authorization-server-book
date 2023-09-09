@@ -28,7 +28,7 @@ public class CS {
 
     private final int port = 8080;
 
-    private final int requests = 10;
+    private final int requests = 100;
 
     private static ExecutorService loom() {
         return Executors.newVirtualThreadPerTaskExecutor();
@@ -39,25 +39,19 @@ public class CS {
                 Runtime.getRuntime().availableProcessors());
     }
 
-    private final Supplier<ExecutorService> executorServiceSupplier = CS::traditional;
-
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         SpringApplication.run(CS.class, args);
+        Thread.currentThread().join();
     }
 
-    @Bean
-    ExecutorService serviceExecutor() {
-        return this.executorServiceSupplier.get();
-    }
+    private final Supplier<ExecutorService> executorServiceSupplier = CS::loom;
+    private final ExecutorService serviceExecutor = this.executorServiceSupplier.get();
+    private final ExecutorService clientExecutor = this.executorServiceSupplier.get();
 
     @Bean
-    ExecutorService clientExecutor() {
-        return this.executorServiceSupplier.get();
-    }
-
-    @Bean
-    Server server(ApplicationEventPublisher publisher, ExecutorService serviceExecutor) {
-        return new Server(publisher, serviceExecutor, this.port);
+    Server server(ApplicationEventPublisher publisher) {
+        return new Server(publisher, this.serviceExecutor,
+                this.port);
     }
 
 
@@ -67,9 +61,8 @@ public class CS {
     }
 
     @Bean
-    Launcher launcher(Client client, ExecutorService clientExecutor,
-                      ExecutorService serviceExecutor, Server server) {
-        return new Launcher(this.requests, clientExecutor, serviceExecutor, server, client);
+    Launcher launcher(Client client, Server server) {
+        return new Launcher(this.requests, this.clientExecutor, this.serviceExecutor, server, client);
     }
 
     static class Launcher {
@@ -77,7 +70,7 @@ public class CS {
         private final Server server;
         private final Client client;
         private final ExecutorService clientExecutor, serviceExecutor;
-        private final CountDownLatch waiter;
+        private final CountDownLatch clientWaiter, serviceWaiter;
         private final int requests;
 
         Launcher(int requests, ExecutorService clientExecutor, ExecutorService serviceExecutor, Server server, Client client) {
@@ -86,12 +79,13 @@ public class CS {
             this.clientExecutor = clientExecutor;
             this.serviceExecutor = serviceExecutor;
             this.requests = requests;
-            this.waiter = new CountDownLatch(requests);
+            this.clientWaiter = new CountDownLatch(requests);
+            this.serviceWaiter = new CountDownLatch(1);
         }
 
         @EventListener(ClientRequestHandledEvent.class)
         public void clientRequestHandledEventListener() {
-            this.waiter.countDown();
+            this.clientWaiter.countDown();
         }
 
         @EventListener(ApplicationReadyEvent.class)
@@ -106,7 +100,7 @@ public class CS {
                     var start = System.nanoTime();
                     for (var i = 0; i < this.requests; i++)
                         this.clientExecutor.submit(this.client::connect);
-                    this.waiter.await();
+                    this.clientWaiter.await();
                     var stop = System.nanoTime();
                     this.server.stop();
                     log.info("duration: " + (stop - start));
@@ -191,7 +185,7 @@ public class CS {
             try (var serverSocket = new ServerSocket(this.port)) {
                 log.info("Server is listening on port " + this.port);
                 publisher.publishEvent(new ServerStartedEvent());
-                while (this.running.get())  {
+                while (this.running.get()) {
                     log.info("waiting for the next socket");
                     var clientSocket = serverSocket.accept();
                     executorService.submit(new ClientRequestHandler(clientSocket, this.publisher));
