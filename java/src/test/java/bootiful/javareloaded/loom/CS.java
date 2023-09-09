@@ -1,5 +1,6 @@
 package bootiful.javareloaded.loom;
 
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -14,6 +15,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -22,17 +24,40 @@ import java.util.function.Supplier;
 @SpringBootApplication
 public class CS {
 
+    private final static Logger log = LoggerFactory.getLogger(CS.class.getName());
+
     private final int port = 8080;
-    private final Supplier<ExecutorService> executorServiceSupplier = () -> Executors.newFixedThreadPool(10);
+
+    private final int requests = 10;
+
+    private static ExecutorService loom() {
+        return Executors.newVirtualThreadPerTaskExecutor();
+    }
+
+    private static ExecutorService traditional() {
+        return Executors.newFixedThreadPool(
+                Runtime.getRuntime().availableProcessors());
+    }
+
+    private final Supplier<ExecutorService> executorServiceSupplier = CS::traditional;
 
     public static void main(String[] args) {
         SpringApplication.run(CS.class, args);
     }
 
     @Bean
-    Server server(ApplicationEventPublisher publisher) {
-        return new Server(publisher,
-                this.executorServiceSupplier.get(), this.port);
+    ExecutorService serviceExecutor() {
+        return this.executorServiceSupplier.get();
+    }
+
+    @Bean
+    ExecutorService clientExecutor() {
+        return this.executorServiceSupplier.get();
+    }
+
+    @Bean
+    Server server(ApplicationEventPublisher publisher, ExecutorService serviceExecutor) {
+        return new Server(publisher, serviceExecutor, this.port);
     }
 
 
@@ -41,32 +66,55 @@ public class CS {
         return new Client("127.0.0.1", this.port);
     }
 
-
     @Bean
-    Launcher launcher(Client client, Server server) {
-        return new Launcher(executorServiceSupplier.get(), server, client);
+    Launcher launcher(Client client, ExecutorService clientExecutor,
+                      ExecutorService serviceExecutor, Server server) {
+        return new Launcher(this.requests, clientExecutor, serviceExecutor, server, client);
     }
 
     static class Launcher {
 
         private final Server server;
         private final Client client;
-        private final ExecutorService executorService;
+        private final ExecutorService clientExecutor, serviceExecutor;
+        private final CountDownLatch waiter;
+        private final int requests;
 
-        Launcher(ExecutorService executorService, Server server, Client client) {
+        Launcher(int requests, ExecutorService clientExecutor, ExecutorService serviceExecutor, Server server, Client client) {
             this.server = server;
             this.client = client;
-            this.executorService = executorService;
+            this.clientExecutor = clientExecutor;
+            this.serviceExecutor = serviceExecutor;
+            this.requests = requests;
+            this.waiter = new CountDownLatch(requests);
+        }
+
+        @EventListener(ClientRequestHandledEvent.class)
+        public void clientRequestHandledEventListener() {
+            this.waiter.countDown();
         }
 
         @EventListener(ApplicationReadyEvent.class)
-        public void serverRunner() throws Exception {
-            this.executorService.submit(this.server::start);
+        public void serverRunner() {
+            this.serviceExecutor.submit(this.server::start);
         }
 
         @EventListener(ServerStartedEvent.class)
         public void clientRunner() {
-            this.executorService.submit(this.client::connect);
+            this.clientExecutor.submit(() -> {
+                try {
+                    var start = System.nanoTime();
+                    for (var i = 0; i < this.requests; i++)
+                        this.clientExecutor.submit(this.client::connect);
+                    this.waiter.await();
+                    var stop = System.nanoTime();
+                    this.server.stop();
+                    log.info("duration: " + (stop - start));
+                }//
+                catch (InterruptedException e) {
+                    Utils.error(e);
+                }
+            });
         }
     }
 
@@ -106,8 +154,7 @@ public class CS {
                 out.println(messageToSend);
 
                 var response = in.readLine();
-                System.out.println("Received from server: " + response);
-
+                log.info("Received from server: " + response);
             }//
             catch (IOException e) {
                 Utils.error(e);
@@ -118,6 +165,9 @@ public class CS {
     }
 
 
+    record ClientRequestHandledEvent() {
+    }
+
     record ServerStartedEvent() {
     }
 
@@ -126,8 +176,8 @@ public class CS {
 
         private final AtomicBoolean running = new AtomicBoolean(false);
         private final ExecutorService executorService;
-        private final int port;
         private final ApplicationEventPublisher publisher;
+        private final int port;
 
         Server(ApplicationEventPublisher publisher, ExecutorService executorService, int port) {
             this.executorService = executorService;
@@ -138,26 +188,36 @@ public class CS {
 
         public void start() {
             this.running.set(true);
-            try (var serverSocket = new ServerSocket(port)) {
-                System.out.println("Server is listening on port " + port);
+            try (var serverSocket = new ServerSocket(this.port)) {
+                log.info("Server is listening on port " + this.port);
                 publisher.publishEvent(new ServerStartedEvent());
-                while (this.running.get()) {
+                while (this.running.get())  {
+                    log.info("waiting for the next socket");
                     var clientSocket = serverSocket.accept();
-                    executorService.submit(new ClientRequestHandler(clientSocket));
+                    executorService.submit(new ClientRequestHandler(clientSocket, this.publisher));
                 }
+
+                log.info("stopping the server");
             }//
             catch (IOException e) {
                 Utils.error(e);
             }
         }
 
+        public void stop() {
+            log.info("calling stop()");
+            this.running.set(false);
+        }
+
 
         private static class ClientRequestHandler implements Runnable {
 
             private final Socket socket;
+            private final ApplicationEventPublisher publisher;
 
-            ClientRequestHandler(Socket socket) {
+            ClientRequestHandler(Socket socket, ApplicationEventPublisher publisher) {
                 this.socket = socket;
+                this.publisher = publisher;
             }
 
             @Override
@@ -165,14 +225,15 @@ public class CS {
                 try (var in = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
                      var out = new PrintWriter(this.socket.getOutputStream(), true)) {
 
-                    System.out.println("Client connected.");
+                    log.info("Client connected.");
 
                     var input = in.readLine();
-                    System.out.println("Received from client: " + input);
+                    log.info("Received from client: " + input);
 
                     // Reverse the string and send it back
                     var reversed = new StringBuilder(input).reverse().toString();
                     out.println(reversed);
+                    publisher.publishEvent(new ClientRequestHandledEvent());
                 }//
                 catch (Throwable throwable) {
                     Utils.error(throwable);
@@ -180,6 +241,7 @@ public class CS {
                 finally {
                     Utils.closeSocket(this.socket);
                 }
+                log.info("end of the request handler");
             }
 
         }
