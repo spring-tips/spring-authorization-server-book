@@ -28,22 +28,23 @@ class Server {
         this.executor = executor;
     }
 
-    private void handleRequest(Socket socket, InputStream in, OutputStream out) throws Throwable {
-        try {
-            var next = -1;
-            var byteArrayOutputStream = new ByteArrayOutputStream();
-            while ((next = in.read()) != -1)
-                byteArrayOutputStream.write(next);
-            var request = byteArrayOutputStream.toString();
-            var reversedBytes = new StringBuilder(request)
-                    .reverse()
-                    .toString();
-            out.write(reversedBytes.getBytes(StandardCharsets.UTF_8));
+    private static String payload(String input) {
+        return input.substring(0, Math.min(input.length(), 100)) + "...";
+    }
 
-        } ///
-        finally {
-            socket.close();
-        }
+    private void handleRequest(Socket client, InputStream in, OutputStream out) throws Throwable {
+        var next = -1;
+        var byteArrayOutputStream = new ByteArrayOutputStream();
+        while ((next = in.read()) != -1)
+            byteArrayOutputStream.write(next);
+        var request = byteArrayOutputStream.toString();
+        log.info("request on server [" + payload(request) + "]");
+        var reversedBytes = new StringBuilder(request)
+                .reverse()
+                .toString();
+        log.info("response on server [" + payload(reversedBytes) + "]");
+        out.write(reversedBytes.getBytes(StandardCharsets.UTF_8));
+        out.flush();
     }
 
     public void stop() {
@@ -61,8 +62,8 @@ class Server {
                     var os = client.getOutputStream();
                     this.executor.submit(() -> {
                         try {
-                            log.info("got a new request");
-                            handleRequest(client, is, os);
+                            log.info("got a new request [" + client + "]");
+                            this.handleRequest(client, is, os);
                         }//
                         catch (Throwable exception) {
                             throw new RuntimeException("there's been an exception in our request handler: ",
