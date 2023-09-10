@@ -675,6 +675,22 @@ pre.rouge {
 </li>
 <li><a href="#_protecting_a_simple_http_api">Protecting a Simple HTTP API</a></li>
 <li><a href="#_the_gateway_client">The Gateway Client</a></li>
+<li><a href="#_your_first_cup_of_java">Your First Cup of Java</a>
+<ul class="sectlevel2">
+<li><a href="#_operations_improvements">Operations Improvements</a></li>
+<li><a href="#_performance">Performance</a></li>
+<li><a href="#_autocloseable">Autocloseable</a></li>
+<li><a href="#_type_inference">Type Inference</a></li>
+<li><a href="#_enhanced_switch_expressions">Enhanced Switch Expressions</a></li>
+<li><a href="#_multiline_strings">Multiline Strings</a></li>
+<li><a href="#_records">Records</a></li>
+<li><a href="#_sealed_types">Sealed Types</a></li>
+<li><a href="#_smart_casts">Smart Casts</a></li>
+<li><a href="#_function_interfaces_lambdas_and_method_references">Function Interfaces, Lambdas  and Method References</a></li>
+<li><a href="#_virtual_threads_and_loom">Virtual Threads and Loom</a></li>
+<li><a href="#_next_steps">Next Steps</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -1221,6 +1237,7 @@ Define a bean of type <code>PasswordEncoder</code> for use in your program.</p>
 <div class="content">
 <pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.authorizationserver</span><span class="o">;</span>
 
+<span class="kn">import</span> <span class="nn">com.nimbusds.jose.jwk.source.JWKSource</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.springframework.context.annotation.Bean</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.springframework.context.annotation.Configuration</span><span class="o">;</span>
 <span class="kn">import</span> <span class="nn">org.springframework.security.crypto.factory.PasswordEncoderFactories</span><span class="o">;</span>
@@ -1228,6 +1245,9 @@ Define a bean of type <code>PasswordEncoder</code> for use in your program.</p>
 
 <span class="nd">@Configuration</span>
 <span class="kd">class</span> <span class="nc">SecurityConfiguration</span> <span class="o">{</span>
+
+    <span class="c1">// todo jwk source should be static/fixed! overide the default one</span>
+<span class="c1">//    @Bean JWKSource &lt;SecurityContext&gt; jwkSource (){}</span>
 
     // <b class="conum">(1)</b>
     <span class="nd">@Bean</span>
@@ -1568,9 +1588,9 @@ Create a file <code>src/main/resources/sql/schema/spring-session-jdbc.sql</code>
     <span class="n">expiry_time</span>           <span class="nb">bigint</span>                    <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
     <span class="n">principal_name</span>        <span class="nb">character</span> <span class="nb">varying</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
 <span class="p">);</span>
-<span class="k">create</span> <span class="k">unique</span> <span class="k">index</span> <span class="n">spring_session_ix1</span> <span class="k">on</span> <span class="n">spring_session</span> <span class="k">using</span> <span class="n">btree</span> <span class="p">(</span><span class="n">session_id</span><span class="p">);</span>
-<span class="k">create</span> <span class="k">index</span> <span class="n">spring_session_ix2</span> <span class="k">on</span> <span class="n">spring_session</span> <span class="k">using</span> <span class="n">btree</span> <span class="p">(</span><span class="n">expiry_time</span><span class="p">);</span>
-<span class="k">create</span> <span class="k">index</span> <span class="n">spring_session_ix3</span> <span class="k">on</span> <span class="n">spring_session</span> <span class="k">using</span> <span class="n">btree</span> <span class="p">(</span><span class="n">principal_name</span><span class="p">);</span>
+<span class="k">create</span> <span class="k">unique</span> <span class="k">index</span> <span class="n">if</span> <span class="k">not</span> <span class="k">exists</span> <span class="n">spring_session_ix1</span> <span class="k">on</span> <span class="n">spring_session</span> <span class="k">using</span> <span class="n">btree</span> <span class="p">(</span><span class="n">session_id</span><span class="p">);</span>
+<span class="k">create</span> <span class="k">index</span> <span class="n">if</span> <span class="k">not</span> <span class="k">exists</span> <span class="n">spring_session_ix2</span> <span class="k">on</span> <span class="n">spring_session</span> <span class="k">using</span> <span class="n">btree</span> <span class="p">(</span><span class="n">expiry_time</span><span class="p">);</span>
+<span class="k">create</span> <span class="k">index</span> <span class="n">if</span> <span class="k">not</span> <span class="k">exists</span> <span class="n">spring_session_ix3</span> <span class="k">on</span> <span class="n">spring_session</span> <span class="k">using</span> <span class="n">btree</span> <span class="p">(</span><span class="n">principal_name</span><span class="p">);</span>
 
 <span class="c1">-- session attributes</span>
 <span class="k">create</span> <span class="k">table</span> <span class="n">if</span> <span class="k">not</span> <span class="k">exists</span> <span class="n">spring_session_attributes</span>
@@ -1579,7 +1599,7 @@ Create a file <code>src/main/resources/sql/schema/spring-session-jdbc.sql</code>
     <span class="n">attribute_name</span>     <span class="nb">character</span> <span class="nb">varying</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span> <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
     <span class="n">attribute_bytes</span>    <span class="n">bytea</span>                  <span class="k">not</span> <span class="k">null</span><span class="p">,</span>
     <span class="k">primary</span> <span class="k">key</span> <span class="p">(</span><span class="n">session_primary_id</span><span class="p">,</span> <span class="n">attribute_name</span><span class="p">),</span>
-    <span class="k">foreign</span> <span class="k">key</span> <span class="p">(</span><span class="n">session_primary_id</span><span class="p">)</span> <span class="k">references</span> <span class="k">public</span><span class="p">.</span><span class="n">spring_session</span> <span class="p">(</span><span class="n">primary_id</span><span class="p">)</span>
+    <span class="k">foreign</span> <span class="k">key</span> <span class="p">(</span><span class="n">session_primary_id</span><span class="p">)</span> <span class="k">references</span> <span class="n">spring_session</span> <span class="p">(</span><span class="n">primary_id</span><span class="p">)</span>
         <span class="k">match</span> <span class="k">simple</span> <span class="k">on</span> <span class="k">update</span> <span class="k">no</span> <span class="n">action</span> <span class="k">on</span> <span class="k">delete</span> <span class="k">cascade</span>
 <span class="p">);</span></code></pre>
 </div>
@@ -2048,16 +2068,14 @@ Let&#8217;s build one.</p>
 <h2 id="_the_gateway_client">The Gateway Client</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>In our super secure OAuth onion, this next microservice - the <code>gateway</code> - is the outermost layer.
-It is the first port-of-call for all requests intended for our system.
-When visitors to our site punch in the domain name for our system into a browser, it&#8217;ll resolve to a loadbalancer serving this gateway service.
-This is where the users of our system will come and so it is here we&#8217;ll want to originate an OAuth token in the browser.
+<p>In our super secure OAuth onion, this next microservice, the <code>gateway</code>, is the outermost layer.
+It is the first port-of-call for all requests destined for the microservices in our system.
+When visitors to our site punch in the domain name for our system into a browser, it&#8217;ll resolve to a loadbalancer serving this gateway service, and it is here where we&#8217;ll originate an OAuth token.
 This service is also a gateway, powered by Spring Cloud Gateway.
 The gateway acts as a proxy, allowing us to forward requests to different hosts and ports, concealing from the user that the responses they&#8217;re seeing are from different services.</p>
 </div>
 <div class="paragraph">
-<p>There&#8217;s very little Java code in the gateway module.
-The <code>gateway</code> service&#8217;s job is entirely to handle the OAuth dance if it detects that the request is not authenticated and to proxy requests to two other HTTP endpoints: the <code>api</code> we just built, and have running on port <code>8081</code>, and the static HTML process running on port <code>8020</code>.</p>
+<p>The <code>gateway</code> service&#8217;s job is entirely to handle the OAuth dance - if it detects that the request is not authenticated - and to proxy requests to two other HTTP endpoints: the <code>api</code> we just built, and have running on port <code>8081</code>, and the static HTML process running on port <code>8020</code>.</p>
 </div>
 <div class="paragraph">
 <p>Here&#8217;s the routing table</p>
@@ -2128,7 +2146,9 @@ The <code>static</code> site won&#8217;t care (it&#8217;s just serving up static
 <div class="colist arabic">
 <ol>
 <li>
-<p>you could probably get away with not definining this bean at all <em>if</em> you were willing to deal with default behavior of CSRF tokens, which I am not. In the interest of simplicity, I&#8217;m disabling them, but in so doing I am also disabling all the other  things Spring Security assumed I wanted. So we will also go through and re-enable those things.</p>
+<p>you could probably get away with not defining this bean at all <em>if</em> you were willing to deal with default behavior of CSRF tokens, which I am not.
+In the interest of simplicity, I&#8217;m disabling them, but in so doing I am also disabling all the other things Spring Security assumed I wanted.
+So we will also go through and re-enable those things.</p>
 </li>
 <li>
 <p>We want all HTTP requests to be authenticated&#8230;&#8203;</p>
@@ -2137,15 +2157,26 @@ The <code>static</code> site won&#8217;t care (it&#8217;s just serving up static
 <p>&#8230;&#8203;and to disable the CSRF support&#8230;&#8203;</p>
 </li>
 <li>
-<p>&#8230;&#8203;and to re-enable OAuth 2 OIDC login support and the OAuth 2 client support. The OIDC login functionality is what triggers the OAuth dance we&#8217;ve talked about. The OAuth 2 client support  is what tells Spring Security, running in this process, as which OAuth 2 client requests for OIDC login should be done. We&#8217;ll need to specify the particulars in the property configuration later.</p>
+<p>&#8230;&#8203;and to re-enable OAuth 2 OIDC login support and the OAuth 2 client support.
+The OIDC login functionality is what triggers the OAuth dance we&#8217;ve talked about.
+The OAuth 2 client support is what tells Spring Security, running in this process, as which OAuth 2 client requests for OIDC login should be done.
+We&#8217;ll need to specify the particulars in the property configuration later.</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p>The security configuration is pretty straightforward. We&#8217;re an OAuth client. We want to prompt users to login with a particular client. Once a user is authenticated, well, there&#8217;s not much for them to see! We need Spring Cloud Gateway to connect our other HTTP services to the user visiting this <code>gateway</code> service.</p>
+<p>The security configuration is pretty straightforward.
+We&#8217;re an OAuth client.
+We want to prompt users to login with a particular client.
+Once a user is authenticated, well, there&#8217;s not much for them to see!
+We need Spring Cloud Gateway to connect our other HTTP services to the user visiting this <code>gateway</code> service.</p>
 </div>
 <div class="paragraph">
-<p>We&#8217;ll configure two Spring Cloud Gateway <em>routes</em>. Each request has a predicate, optional filter(s), and a destination URI. The predicate defines how requests to the Spring Cloud Gateway service are matched, e.g.: does this request have a particular header or cookie, or a particlar path, or a particular virtual host? You may specify one or more filters that act on the incoming requests, changing it. Finally, the request, after it has passed through any and all filters, is sent to a final destination, which we specify with a URI.</p>
+<p>We&#8217;ll configure two Spring Cloud Gateway <em>routes</em>.
+Each request has a predicate, optional filter(s), and a destination URI.
+The predicate defines how requests to the Spring Cloud Gateway service are matched, e.g.: does this request have a particular header or cookie, or a particlar path, or a particular virtual host?
+You may specify one or more filters that act on the incoming requests, changing it.
+Finally, the request, after it has passed through any and all filters, is sent to a final destination, which we specify with a URI.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2194,7 +2225,8 @@ The <code>static</code> site won&#8217;t care (it&#8217;s just serving up static
 </ol>
 </div>
 <div class="paragraph">
-<p>That&#8217;s just about all the Java code for this service, but its role and importance in the architecture can not be overstated. Let&#8217;s look at the property file that ties it all together.</p>
+<p>That&#8217;s just about all the Java code for this service, but its role and importance in the architecture can not be overstated.
+Let&#8217;s look at the property file that ties it all together.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2224,6 +2256,1069 @@ The <code>static</code> site won&#8217;t care (it&#8217;s just serving up static
 <p>otherwise it will use this configuration to, acting as a client, inintiate an OIDC login to allow you to come up with a valid token.</p>
 </li>
 </ol>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_your_first_cup_of_java">Your First Cup of Java</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>"WARNING: Spoilers ahead!" That is what I think every chapter or indeed every bit of informative text should say upfront because, by its very nature, the new knowledge and insight gained from such a chapter spells out the nuances of the unknown topic that it treats.
+But, unfortunately, most texts forego that friendly warning.
+Well, I didn&#8217;t: there are <em>spoilers</em> ahead!</p>
+</div>
+<div class="paragraph">
+<p>Some of you will probably appreciate the warning.
+Because some of you have not upgraded to Java 11, let alone Java 17. I can only assume you are saving the surprise for some special day, years in the future?
+I don&#8217;t know what the reason is, but I hope you&#8217;re able to move up and over soon because Spring Framework 6 and Spring Boot 3 assume a Java 17 baseline.
+That means that not only do those generations of Spring support Java 17 features (as did the Spring Framework 5 and Spring Boot generations), they also use some Java 17 features in their source code.
+This book doesn&#8217;t use Spring Framework 6 and Spring Boot 3 yet, but it will assume a Java 17 baseline for the code herein.</p>
+</div>
+<div class="paragraph">
+<p>Whatever the cause of your hesitation, this chapter contains <em>spoilers</em>!
+If you don&#8217;t mind spoilers, let&#8217;s dive right in!</p>
+</div>
+<div class="paragraph">
+<p>First things first: you need an OpenJDK distribution that works for you.
+The list of valid and viable distributions scrolls down to the floor and out the door, so I&#8217;ll refer you to Fooojay.io&#8217;s <a href="https://foojay.io/almanac/java-17/">handy version almanac for Java 17</a>.
+One of my favorite tools for managing my Java installations on UNIX-y type operating systems is <a href="https://sdkman.io/"><code>sdkman</code></a>.
+It works on macOS, Windows Subsystem for Linux (WSL), Linux, and I&#8217;m sure other places besides.
+I use the <a href="https://www.graalvm.org/">GraalVM</a> distribution.
+GraalVM is an OpenJDK distribution with some extra features, including ahead-of-time native image compilation.
+To get that distribution, you might say:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="shell">sdk <span class="nb">install </span>java 17.0.7-graalce <b class="conum">(1)</b>
+sdk default java 17.0.7-graalce <b class="conum">(2)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>the first command installs the latest version of the GraalVM distribution of Java 17</p>
+</li>
+<li>
+<p>the second makes it the default installed distribution on my box so that all my interactions with Java are going to that distribution</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>With that done, let&#8217;s look at some neat features in Java&#8217;s latest and greatest versions up until Java 17.</p>
+</div>
+<div class="sect2">
+<h3 id="_operations_improvements">Operations Improvements</h3>
+<div class="paragraph">
+<p>The newer versions of Java now support something called CDS Archives.
+CDS Archives essentially capture some of the invariant (but freshly computed) state from a given application and cache it for easy reuse on subsequent runs.
+I consistently shave 0.1 or 0.2 seconds from startup time when using CDS Archives.</p>
+</div>
+<div class="paragraph">
+<p>The newer versions of Java are also container aware.
+So, let&#8217;s suppose you are running Docker images on your host machine, which has 32GB of RAM.
+You might configure the JRE with 2GB of RAM and errantly configure the Docker container with only 1GB of RAM.
+Java would see the 32GB and think it could allocate 2GB and then fail to startup.
+Java is aware of the container&#8217;s limited RAM in newer versions and won&#8217;t exceed it.</p>
+</div>
+<div class="paragraph">
+<p>Java Flight Recorder (JEP 328) monitors and profiles running Java applications.
+Even better, it does so with a low runtime footprint.
+Java Mission Control allows ingesting and visualizing Java Flight Recorder data.
+Java Mission Control takes Java&#8217;s already stellar support for observability to the next level.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_performance">Performance</h3>
+<div class="paragraph">
+<p>Java 17 is <em>fast</em> and reliable.</p>
+</div>
+<div class="paragraph">
+<p>Java&#8217;s garbage collector is the stuff of legend.
+It&#8217;s fast, lightweight, and minimally invasive.
+It&#8217;s also one of those things where, when it&#8217;s improved, your application&#8217;s runtime improves with it, for free.
+No recompilation is required.</p>
+</div>
+<div class="paragraph">
+<p>G1 has been the default garbage collector since Java 9, replacing the Parallel garbage collector in Java 8. It reduces pause times with the default Parallel GC from Java 8, though it may have lower throughput overall.
+Next, Java 11 introduced the ZGC garbage collector to reduce pauses further.
+Finally, Java 14 introduced the Shenandoah GC, which keeps pause times low and does so in a manner independent of the heap&#8217;s size.</p>
+</div>
+<div class="paragraph">
+<p>And it&#8217;s fast.
+I can&#8217;t give you a specific number or anything because it is so highly workload-sensitive, but <a href="https://www.optaplanner.org/blog/2021/09/15/HowMuchFasterIsJava17.html">this post from the folks at OptaPlanner</a> is persuasive.
+They saw an average of 8.66% improvement for their CPU-intensive workloads when using the G1 GC, measured after a discarded 30 second warmup period.
+These numbers reflect the jump from Java 11 (not Java 8) to Java 17. I can only imagine the numbers from Java 8 to Java 17 are even better.
+And that number is just an average: some workloads improved by as much as 23%!</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_autocloseable">Autocloseable</h3>
+<div class="paragraph">
+<p>Java manages most memory for you, but it can&#8217;t be responsible for the state outside of the humble confines of the JVM.
+So, for example, you wouldn&#8217;t like it if Java <em>garbage collected</em> your connection to the database, and you wouldn&#8217;t like it if Java garbage-collected your open socket connections without warning.
+Therefore, the interfaces you use to interact with these external resources typically have a <code>close()</code> method that you, the client, need to call when working the external resource finishes.</p>
+</div>
+<div class="paragraph">
+<p>You mustn&#8217;t neglect to call that method!
+Don&#8217;t be greedy!
+You&#8217;re not greedy, are ya?
+You want to leave the JVM as clean as you found it.
+So, you write the boilerplate.
+We all know the boilerplate: open the resource; work with it; surround that work with a <code>try</code>/<code>catch</code>/<code>finally</code> block; catch any <code>Throwable</code> instances if (<em>when</em>?) something goes wrong; <code>close()</code> the resource if something goes wrong.
+Add the <code>close()</code> call in a <code>finally</code> block for extra robustness.
+All the while, handle the exceptions that might arise when you try to do anything, including calling <code>close()</code> the resource.
+You&#8217;ll end up with one or more <code>try</code>/<code>catch</code> embedded within the outer <code>try</code>/<code>catch</code> blocks.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s look at some examples.
+I&#8217;ll read a file on the filesystem to demonstrate this new feature.
+But something needs to ensure that there&#8217;s a file to read in the first place, so I&#8217;ve extracted all that out into a separate class, <code>Utils</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded.closeable</span><span class="o">;</span>
+
+
+<span class="kn">import</span> <span class="nn">java.io.File</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.nio.file.Files</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.time.Instant</span><span class="o">;</span>
+
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">Utils</span> <span class="o">{</span>
+
+    // <b class="conum">(1)</b>
+    <span class="kd">static</span> <span class="nc">String</span> <span class="no">CONTENTS</span> <span class="o">=</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="s">"""
+            &lt;html&gt;
+            &lt;body&gt;&lt;h1&gt; Hello, world, @ %s !&lt;/h1&gt; &lt;/body&gt;
+            &lt;/html&gt;
+            """</span><span class="o">,</span> <span class="nc">Instant</span><span class="o">.</span><span class="na">now</span><span class="o">().</span><span class="na">toString</span><span class="o">()).</span><span class="na">trim</span><span class="o">();</span>
+
+    // <b class="conum">(2)</b>
+    <span class="kd">static</span> <span class="nc">File</span> <span class="nf">setup</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="kt">var</span> <span class="n">path</span> <span class="o">=</span> <span class="nc">Files</span><span class="o">.</span><span class="na">createTempFile</span><span class="o">(</span><span class="s">"bootiful"</span><span class="o">,</span> <span class="s">".txt"</span><span class="o">);</span>
+            <span class="kt">var</span> <span class="n">file</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="na">toFile</span><span class="o">();</span>
+            <span class="n">file</span><span class="o">.</span><span class="na">deleteOnExit</span><span class="o">();</span>
+            <span class="nc">Files</span><span class="o">.</span><span class="na">writeString</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="no">CONTENTS</span><span class="o">);</span>
+            <span class="k">return</span> <span class="n">file</span><span class="o">;</span>
+        <span class="o">}</span><span class="c1">//</span>
+        <span class="k">catch</span> <span class="o">(</span><span class="nc">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">error</span><span class="o">(</span><span class="n">t</span><span class="o">);</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">"could not produce a new file"</span><span class="o">);</span>
+        <span class="o">}</span>
+
+    <span class="o">}</span>
+
+    // <b class="conum">(3)</b>
+    <span class="kd">static</span> <span class="kt">void</span> <span class="nf">error</span><span class="o">(</span><span class="nc">Throwable</span> <span class="n">throwable</span><span class="o">)</span> <span class="o">{</span>// <b class="conum">(2)</b>
+        <span class="nc">System</span><span class="o">.</span><span class="na">err</span><span class="o">.</span><span class="na">println</span><span class="o">(</span>
+                <span class="s">"there's been an exception processing the read! "</span> <span class="o">+</span>
+                <span class="n">throwable</span><span class="o">.</span><span class="na">getMessage</span><span class="o">());</span>
+    <span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>the contents of the file, using a handy multiline Java <code>String</code></p>
+</li>
+<li>
+<p>this method returns the <code>java.io.File</code> for the newly created temporary file</p>
+</li>
+<li>
+<p>a convenience method to log errors.
+Do not rewrite this code!
+Otherwise, if you&#8217;re doing things the old-fashioned way, you&#8217;ll find yourself rewriting this a <em>lot</em>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Now, let&#8217;s look at an example of what <em>not</em> to do.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded.closeable</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.io.*</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">static</span> <span class="n">bootiful</span><span class="o">.</span><span class="na">javareloaded</span><span class="o">.</span><span class="na">closeable</span><span class="o">.</span><span class="na">Utils</span><span class="o">.</span><span class="na">error</span><span class="o">;</span>
+
+<span class="kd">class</span> <span class="nc">TraditionalResourceHandlingTest</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="nc">File</span> <span class="n">file</span> <span class="o">=</span> <span class="nc">Utils</span><span class="o">.</span><span class="na">setup</span><span class="o">();</span>// <b class="conum">(1)</b>
+
+    <span class="nd">@Test</span>
+    <span class="kt">void</span> <span class="nf">read</span><span class="o">()</span> <span class="o">{</span>
+        <span class="kt">var</span> <span class="n">bufferedReader</span> <span class="o">=</span> <span class="o">(</span><span class="nc">BufferedReader</span><span class="o">)</span> <span class="kc">null</span><span class="o">;</span> // <b class="conum">(2)</b>
+        <span class="k">try</span> <span class="o">{</span>
+            <span class="n">bufferedReader</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">BufferedReader</span><span class="o">(</span><span class="k">new</span> <span class="nc">FileReader</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">file</span><span class="o">));</span>
+            <span class="kt">var</span> <span class="n">stringBuilder</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">();</span>
+            <span class="kt">var</span> <span class="n">line</span> <span class="o">=</span> <span class="o">(</span><span class="nc">String</span><span class="o">)</span> <span class="kc">null</span><span class="o">;</span>
+            <span class="k">while</span> <span class="o">((</span><span class="n">line</span> <span class="o">=</span> <span class="n">bufferedReader</span><span class="o">.</span><span class="na">readLine</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">stringBuilder</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">line</span><span class="o">);</span>
+                <span class="n">stringBuilder</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">lineSeparator</span><span class="o">());</span>
+            <span class="o">}</span>
+            <span class="kt">var</span> <span class="n">contents</span> <span class="o">=</span> <span class="n">stringBuilder</span><span class="o">.</span><span class="na">toString</span><span class="o">().</span><span class="na">trim</span><span class="o">();</span>
+            <span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">contents</span><span class="o">,</span> <span class="nc">Utils</span><span class="o">.</span><span class="na">CONTENTS</span><span class="o">);</span>
+        <span class="o">}</span> <span class="c1">//</span>
+        <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span> // <b class="conum">(3)</b>
+            <span class="n">error</span><span class="o">(</span><span class="n">e</span><span class="o">);</span>
+        <span class="o">}</span> <span class="c1">//</span>
+        <span class="k">finally</span> <span class="o">{</span> // <b class="conum">(4)</b>
+            <span class="n">close</span><span class="o">(</span><span class="n">bufferedReader</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">close</span><span class="o">(</span><span class="nc">Reader</span> <span class="n">reader</span><span class="o">)</span> <span class="o">{</span> // <b class="conum">(3)</b>
+        <span class="k">if</span> <span class="o">(</span><span class="n">reader</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">try</span> <span class="o">{</span>
+                <span class="n">reader</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+            <span class="o">}</span> <span class="c1">//</span>
+            <span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">error</span><span class="o">(</span><span class="n">e</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>from which file are we reading?</p>
+</li>
+<li>
+<p>We need a reference to the <code>BufferedReader</code> outside of the scope of the <code>try</code>/<code>catch</code> block, but we don&#8217;t want to initialize that reference until we&#8217;re inside the <code>try</code>/<code>catch</code> block because it might incur an exception.</p>
+</li>
+<li>
+<p>handle any errors.
+Bear in mind that this solution doesn&#8217;t even attempt to field the errors and somehow recover.
+If there is <em>any</em> error anywhere, then we abort.</p>
+</li>
+<li>
+<p>also, make sure to close that <code>Reader</code>!
+Err, close that reader <em>if</em> it&#8217;s not <code>null</code>!
+Sorry, close that reader <em>if</em> it&#8217;s not <code>null</code> and also don&#8217;t forget to handle any errors in the doing, either!
+Be kind, rewind!</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Yuck.
+We can do better with Java 7&#8217;s <code>try-with-resources</code> construct.
+Let&#8217;s rework the example accordingly.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded.closeable</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.io.BufferedReader</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.io.File</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.io.FileReader</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.io.IOException</span><span class="o">;</span>
+
+<span class="kd">class</span> <span class="nc">TryWithResourcesTest</span> <span class="o">{</span>
+
+	<span class="kd">private</span> <span class="kd">final</span> <span class="nc">File</span> <span class="n">file</span> <span class="o">=</span> <span class="nc">Utils</span><span class="o">.</span><span class="na">setup</span><span class="o">();</span>
+
+	<span class="nd">@Test</span>
+	<span class="kt">void</span> <span class="nf">tryWithResources</span><span class="o">()</span> <span class="o">{</span>
+		<span class="k">try</span> <span class="o">(</span><span class="kt">var</span> <span class="n">fileReader</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">FileReader</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">file</span><span class="o">);</span><span class="c1">//</span>
+			 <span class="kt">var</span> <span class="n">bufferedReader</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">BufferedReader</span><span class="o">(</span><span class="n">fileReader</span><span class="o">))</span> <span class="o">{</span>
+			<span class="kt">var</span> <span class="n">stringBuilder</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">StringBuilder</span><span class="o">();</span>
+			<span class="kt">var</span> <span class="n">line</span> <span class="o">=</span> <span class="o">(</span><span class="nc">String</span><span class="o">)</span> <span class="kc">null</span><span class="o">;</span>
+			<span class="k">while</span> <span class="o">((</span><span class="n">line</span> <span class="o">=</span> <span class="n">bufferedReader</span><span class="o">.</span><span class="na">readLine</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+				<span class="n">stringBuilder</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">line</span><span class="o">);</span>
+				<span class="n">stringBuilder</span><span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">lineSeparator</span><span class="o">());</span>
+			<span class="o">}</span>
+			<span class="kt">var</span> <span class="n">contents</span> <span class="o">=</span> <span class="n">stringBuilder</span><span class="o">.</span><span class="na">toString</span><span class="o">().</span><span class="na">trim</span><span class="o">();</span>
+			<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">contents</span><span class="o">,</span> <span class="nc">Utils</span><span class="o">.</span><span class="na">CONTENTS</span><span class="o">);</span>
+		<span class="o">}</span> <span class="c1">//</span>
+		<span class="k">catch</span> <span class="o">(</span><span class="nc">IOException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+			<span class="nc">Utils</span><span class="o">.</span><span class="na">error</span><span class="o">(</span><span class="n">e</span><span class="o">);</span>
+		<span class="o">}</span>
+	<span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_type_inference">Type Inference</h3>
+<div class="paragraph">
+<p>Java 10 introduced type inference for variables given enough context.
+As a result, Java is a strongly typed language with less typing - pressing of keys - required.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded.typeinference</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.util.Map</span><span class="o">;</span>
+
+<span class="kd">class</span> <span class="nc">TypeInferenceTest</span> <span class="o">{</span>
+
+	<span class="nd">@Test</span>
+	<span class="kt">void</span> <span class="nf">infer</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+		<span class="kt">var</span> <span class="n">map1</span> <span class="o">=</span> <span class="nc">Map</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"key"</span><span class="o">,</span> <span class="s">"value"</span><span class="o">);</span> // <b class="conum">(1)</b>
+		<span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">String</span><span class="o">&gt;</span> <span class="n">map2</span> <span class="o">=</span> <span class="nc">Map</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"key"</span><span class="o">,</span> <span class="s">"value"</span><span class="o">);</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">map2</span><span class="o">,</span> <span class="n">map1</span><span class="o">);</span> // <b class="conum">(1)</b>
+		<span class="kt">var</span> <span class="n">anonymousSubclass</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Object</span><span class="o">()</span> <span class="o">{</span>
+			<span class="kd">final</span> <span class="nc">String</span> <span class="n">name</span> <span class="o">=</span> <span class="s">"Peanut the Poodle"</span><span class="o">;</span>
+
+			<span class="kt">int</span> <span class="n">age</span> <span class="o">=</span> <span class="mi">7</span><span class="o">;</span>
+
+		<span class="o">};</span>
+		// <b class="conum">(2)</b>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">anonymousSubclass</span><span class="o">.</span><span class="na">age</span><span class="o">,</span> <span class="mi">7</span><span class="o">);</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">anonymousSubclass</span><span class="o">.</span><span class="na">name</span><span class="o">,</span> <span class="s">"Peanut the Poodle"</span><span class="o">);</span>
+	<span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>both variable definitions contain a type of <code>Customer</code>.
+The compiler knows it, and you know it because the right side of the expression makes it clear.
+So, all things being equal, why not use the more concise version?</p>
+</li>
+<li>
+<p>Indeed, in this case, the compiler knows <em>more</em> about the type than it would before, particularly in the case of anonymous subclasses.
+Suppose you need a throwaway object in which to stash some data temporarily?
+If you created an anonymous subclass of <code>Object</code> and assigned it to a variable of type <code>Object</code>, there&#8217;d be no way to dereference fields defined on the anonymous subclass.
+Traditionally, there was no way to reify <em>anonymous</em> subclass types because they were <em>anonymous</em>.
+But with <code>var</code>, you don&#8217;t need to account for the type; you can let the compiler infer it.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>This last bit - reifying anonymous subclasses comes in particularly handy when you&#8217;re working with Java 8 streams abstractions and want to avoid having a host of throwaway classes created as side effects to conduct your data across the transformations.</p>
+</div>
+<div class="paragraph">
+<p>The new <code>var</code> keyword can come in handy in a whole host of other smaller scenarios.
+You can use the <code>var</code> keyword for parameters in a lambda definition.
+It doesn&#8217;t buy you much over just omitting <code>var</code> (or the type itself), except that you can now decorate the parameter with annotations.
+Neat!</p>
+</div>
+<div class="paragraph">
+<p>Lambdas are the one fly in the proverbial ointment, however.
+Java doesn&#8217;t have structural lambdas like Scala, Kotlin, and other languages.
+Instead, you must assign the lambda to an instance of a functional interface like <code>java.util.function.Consumer&lt;T&gt;</code>.
+If the literal lambda syntax doesn&#8217;t clarify what type that is, then the variable type definition itself must.
+So you can use <code>var</code> for every variable definition <em>except</em> lambdas.
+It&#8217;s so dissatisfying!
+The agony of having a column of nice, clean `var&#8217;s punctuated occasionally with standard variable definitions just because those variables happen to be lambdas!
+There is a way around it with casts, but I admit it isn&#8217;t much better.
+Let&#8217;s look at some examples.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded.typeinference</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.util.HashSet</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">java.util.List</span><span class="o">;</span>
+
+<span class="kd">class</span> <span class="nc">LambdasAndTypeInferenceTest</span> <span class="o">{</span>
+
+	<span class="nd">@FunctionalInterface</span>
+	<span class="kd">interface</span> <span class="nc">MyHandler</span> <span class="o">{</span>
+
+		<span class="nc">String</span> <span class="nf">handle</span><span class="o">(</span><span class="nc">String</span> <span class="n">one</span><span class="o">,</span> <span class="kt">int</span> <span class="n">two</span><span class="o">);</span>
+
+	<span class="o">}</span>
+
+	<span class="kd">private</span> <span class="nc">String</span> <span class="nf">delegate</span><span class="o">(</span><span class="nc">String</span> <span class="n">s</span><span class="o">,</span> <span class="nc">Integer</span> <span class="n">two</span><span class="o">)</span> <span class="o">{</span>
+		<span class="k">return</span> <span class="s">"Hello "</span> <span class="o">+</span> <span class="n">s</span> <span class="o">+</span> <span class="s">":"</span> <span class="o">+</span> <span class="n">two</span><span class="o">;</span>
+	<span class="o">}</span>
+
+	<span class="nd">@Test</span>
+	<span class="kt">void</span> <span class="nf">lambdas</span><span class="o">()</span> <span class="o">{</span>
+		<span class="nc">MyHandler</span> <span class="n">defaultHandler</span> <span class="o">=</span> <span class="k">this</span><span class="o">::</span><span class="n">delegate</span><span class="o">;</span> // <b class="conum">(1)</b>
+		<span class="kt">var</span> <span class="n">withVar</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">MyHandler</span><span class="o">()</span> <span class="o">{</span> // <b class="conum">(2)</b>
+
+			<span class="nd">@Override</span>
+			<span class="kd">public</span> <span class="nc">String</span> <span class="nf">handle</span><span class="o">(</span><span class="nc">String</span> <span class="n">one</span><span class="o">,</span> <span class="kt">int</span> <span class="n">two</span><span class="o">)</span> <span class="o">{</span>
+				<span class="k">return</span> <span class="nf">delegate</span><span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">two</span><span class="o">);</span>
+			<span class="o">}</span>
+		<span class="o">};</span>
+		<span class="kt">var</span> <span class="n">withCast</span> <span class="o">=</span> <span class="o">(</span><span class="nc">MyHandler</span><span class="o">)</span> <span class="k">this</span><span class="o">::</span><span class="n">delegate</span><span class="o">;</span> // <b class="conum">(3)</b>
+		<span class="kt">var</span> <span class="n">string</span> <span class="o">=</span> <span class="s">"hello"</span><span class="o">;</span>
+		<span class="kt">var</span> <span class="n">integer</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span>
+		<span class="kt">var</span> <span class="n">set</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HashSet</span><span class="o">&lt;&gt;(</span> <span class="c1">//</span>
+				<span class="nc">List</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="n">withCast</span><span class="o">.</span><span class="na">handle</span><span class="o">(</span><span class="n">string</span><span class="o">,</span> <span class="n">integer</span><span class="o">),</span> <span class="c1">//</span>
+						<span class="n">withVar</span><span class="o">.</span><span class="na">handle</span><span class="o">(</span><span class="n">string</span><span class="o">,</span> <span class="n">integer</span><span class="o">),</span> <span class="c1">//</span>
+						<span class="n">defaultHandler</span><span class="o">.</span><span class="na">handle</span><span class="o">(</span><span class="n">string</span><span class="o">,</span> <span class="n">integer</span><span class="o">)));</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">set</span><span class="o">.</span><span class="na">size</span><span class="o">(),</span> <span class="mi">1</span><span class="o">,</span> <span class="s">"the 3 entries should all be the same, and thus deduplicated out"</span><span class="o">);</span>
+	<span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>I can&#8217;t use <code>var</code> here because the compiler doesn&#8217;t know to which functional interface type the method reference, <code>delegate(String, Integer)</code>, should be assigned</p>
+</li>
+<li>
+<p>I can use <code>var</code> here, but I&#8217;ve lost all the brevity of lambdas!</p>
+</li>
+<li>
+<p>the only way I know around it is to cast the type like this.
+Ugh.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>I tend to use the cast form a lot.
+Your sensibilities may vary, and given how new this feature is, I wouldn&#8217;t be surprised if my sensibilities change in the future with respect to this feature, as well.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_enhanced_switch_expressions">Enhanced Switch Expressions</h3>
+<div class="paragraph">
+<p>Java has a new <em>enhanced</em> switch, which forms the basis of the gradual addition of <em>pattern amtching</em> to the Java language.
+It simplifies things considerably:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded.switches</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+
+<span class="kd">class</span> <span class="nc">TraditionalSwitchExpressionTest</span> <span class="o">{</span>
+
+	<span class="kd">enum</span> <span class="nc">Emotion</span> <span class="o">{</span>
+
+		// <b class="conum">(1)</b>
+		<span class="no">HAPPY</span><span class="o">,</span> <span class="no">SAD</span>
+
+	<span class="o">}</span>
+
+	<span class="nd">@Test</span>
+	<span class="kt">void</span> <span class="nf">switchExpression</span><span class="o">()</span> <span class="o">{</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">respondToEmotionalState</span><span class="o">(</span><span class="nc">Emotion</span><span class="o">.</span><span class="na">HAPPY</span><span class="o">),</span> <span class="s">"that's wonderful."</span><span class="o">);</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">respondToEmotionalState</span><span class="o">(</span><span class="nc">Emotion</span><span class="o">.</span><span class="na">SAD</span><span class="o">),</span> <span class="s">"I'm so sorry to hear that."</span><span class="o">);</span>
+	<span class="o">}</span>
+
+	<span class="kd">public</span> <span class="nc">String</span> <span class="nf">respondToEmotionalState</span><span class="o">(</span><span class="nc">Emotion</span> <span class="n">emotion</span><span class="o">)</span> <span class="o">{</span>
+		<span class="kt">var</span> <span class="n">response</span> <span class="o">=</span> <span class="s">""</span><span class="o">;</span> // <b class="conum">(2)</b>
+		<span class="k">switch</span> <span class="o">(</span><span class="n">emotion</span><span class="o">)</span> <span class="o">{</span>
+		<span class="k">case</span> <span class="nl">HAPPY:</span>
+			<span class="n">response</span> <span class="o">=</span> <span class="s">"that's wonderful."</span><span class="o">;</span>
+			<span class="k">break</span><span class="o">;</span> // <b class="conum">(3)</b>
+		<span class="k">case</span> <span class="nl">SAD:</span>
+			<span class="n">response</span> <span class="o">=</span> <span class="s">"I'm so sorry to hear that."</span><span class="o">;</span>
+			<span class="k">break</span><span class="o">;</span>
+		<span class="o">}</span>
+
+		<span class="k">return</span> <span class="n">response</span><span class="o">;</span>
+	<span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p><code>Emotion</code> is an <code>enum</code>.
+There are only two possible values (for this simple example that doesn&#8217;t at all reflect the rich gradient of human emotions) for a variable of type <code>Emotion</code>: <code>HAPPY</code> and <code>SAD</code>.
+We have branches for all known states in this' switch' statement.
+The compiler is satisfied that we have covered every possible value, so it doesn&#8217;t insist on a <code>default</code> branch to handle any unforeseen values.
+There are no unforeseen values.
+We say that we&#8217;ve <em>exhausted</em> the range of values.</p>
+</li>
+<li>
+<p>we define a variable to which we assign the results of our processing.</p>
+</li>
+<li>
+<p>take care to <code>break</code> for each branch.
+Otherwise, the execution flow will drop down to other branches, producing undesirable side effects.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The first example is a classic <code>switch</code> statement.
+There&#8217;s nothing wrong, <em>per se</em>, but it&#8217;s tedious, and I tend to avoid writing them.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded.switches</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+
+<span class="kd">class</span> <span class="nc">EnhancedSwitchExpressionTest</span> <span class="o">{</span>
+
+	<span class="nd">@Test</span>
+	<span class="kt">void</span> <span class="nf">switchExpression</span><span class="o">()</span> <span class="o">{</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">respondToEmotionalState</span><span class="o">(</span><span class="nc">Emotion</span><span class="o">.</span><span class="na">HAPPY</span><span class="o">),</span> <span class="s">"that's wonderful."</span><span class="o">);</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">respondToEmotionalState</span><span class="o">(</span><span class="nc">Emotion</span><span class="o">.</span><span class="na">SAD</span><span class="o">),</span> <span class="s">"I'm so sorry to hear that."</span><span class="o">);</span>
+	<span class="o">}</span>
+
+	<span class="kd">private</span> <span class="nc">String</span> <span class="nf">respondToEmotionalState</span><span class="o">(</span><span class="nc">Emotion</span> <span class="n">emotion</span><span class="o">)</span> <span class="o">{</span> // <b class="conum">(1)</b>
+		<span class="k">return</span> <span class="nf">switch</span> <span class="o">(</span><span class="n">emotion</span><span class="o">)</span> <span class="o">{</span>
+		<span class="k">case</span> <span class="no">HAPPY</span> <span class="o">-&gt;</span> <span class="s">"that's wonderful."</span><span class="o">;</span>
+		<span class="k">case</span> <span class="no">SAD</span> <span class="o">-&gt;</span> <span class="s">"I'm so sorry to hear that."</span><span class="o">;</span>
+		<span class="o">};</span>
+	<span class="o">}</span>
+
+	<span class="kd">enum</span> <span class="nc">Emotion</span> <span class="o">{</span>
+
+		<span class="no">HAPPY</span><span class="o">,</span> <span class="no">SAD</span><span class="o">;</span>
+
+	<span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>there&#8217;s no intermediate variable!
+Each branch produces a value, and that value is the result of the <code>switch</code> expression and can be assigned to a variable or, as I do here, returned in one fell swoop from the method as any other expression would.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_multiline_strings">Multiline Strings</h3>
+<div class="paragraph">
+<p>This one is a super small feature that punches well above its weight: Java supports multiline `String`s: hooray!
+There are a million opportunities for multiline `String`s: SQL queries, HTML, Markdown, Asciidoctor, Velocity templating (such as for emails), unit testing, etc.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.time.Instant</span><span class="o">;</span>
+
+<span class="kd">class</span> <span class="nc">MultilineStringsTest</span> <span class="o">{</span>
+
+	<span class="kd">private</span> <span class="kd">final</span> <span class="nc">String</span> <span class="n">instant</span> <span class="o">=</span> <span class="nc">Instant</span><span class="o">.</span><span class="na">now</span><span class="o">().</span><span class="na">toString</span><span class="o">();</span>
+
+	// <b class="conum">(1)</b>
+	<span class="kd">private</span> <span class="kd">final</span> <span class="nc">String</span> <span class="n">multilines</span> <span class="o">=</span> <span class="nc">String</span><span class="o">.</span><span class="na">format</span><span class="o">(</span><span class="s">"""
+			&lt;html&gt;
+			&lt;body&gt;
+			&lt;h1&gt; Hello, world, @ %s!&lt;/h1&gt; &lt;/body&gt;
+			&lt;/html&gt;
+			"""</span><span class="o">,</span> <span class="n">instant</span><span class="o">).</span><span class="na">trim</span><span class="o">();</span>
+
+	// <b class="conum">(2)</b>
+	<span class="kd">private</span> <span class="kd">final</span> <span class="nc">String</span> <span class="n">concatenated</span> <span class="o">=</span> <span class="s">"&lt;html&gt;\n&lt;body&gt;\n"</span> <span class="o">+</span> <span class="s">"&lt;h1&gt; Hello, world, @ "</span> <span class="o">+</span> <span class="n">instant</span> <span class="o">+</span> <span class="s">"!&lt;/h1&gt; &lt;/body&gt;\n"</span>
+			<span class="o">+</span> <span class="s">"&lt;/html&gt;"</span><span class="o">;</span>
+
+	<span class="nd">@Test</span>
+	<span class="kt">void</span> <span class="nf">stringTheory</span><span class="o">()</span> <span class="o">{</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">multilines</span><span class="o">,</span> <span class="k">this</span><span class="o">.</span><span class="na">concatenated</span><span class="o">);</span>
+	<span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>The first example uses a multiline <code>String</code> to represent some HTML markup</p>
+</li>
+<li>
+<p>The second variable recreates the same HTML markup, down to the padding and the newlines, but uses string concatenation and manually encodes newlines, as we used to have to do.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>In the example, both variables <code>multilines</code>, and <code>concatenated</code>, are identical, but I the multiline <code>String</code> is much easier to wrangle.</p>
+</div>
+<div class="paragraph">
+<p>Short and simple.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_records">Records</h3>
+<div class="paragraph">
+<p>Records are perhaps my second favorite new feature in Java.
+If you&#8217;ve ever used case classes in Scala, or data classes in Kotlin, you&#8217;ll feel <em>almost</em> right at home.</p>
+</div>
+<div class="paragraph">
+<p>Java introduced records, which are a new kind of type.
+Records, like enums, are a restricted form of a class.
+As a result, they&#8217;re ideal for "plain data carriers," classes containing data not meant to be altered and only the most fundamental methods such as constructors and accessors.
+We&#8217;ll use (and sometimes abuse) them <em>all</em> the time in this book.
+They&#8217;re wonderful time savers.
+Need to model a read-only entity in your database that has accessors for all the constituent fields, a constructor, a functional <code>toString</code> implementation, a valid <code>equals</code> implementation, and a valid <code>hashCode</code> implementation?
+You&#8217;d better get codin'!
+That&#8217;ll take a while.
+Or, you could use something like Lombok to code-generate all of that for you based on the presence of a handful of annotations.
+Or, you could use records.</p>
+</div>
+<div class="paragraph">
+<p>Here&#8217;s a trivial example.
+Suppose you want to return information about <code>Customer</code> entities <em>and</em> their associated <code>Order</code> data.
+Unfortunately, Java doesn&#8217;t support multiple return types or provide suitable tuple types, so you need to create something to hold both types.
+Records to the rescue!</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded.records</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.util.List</span><span class="o">;</span>
+
+
+<span class="kd">class</span> <span class="nc">SimpleRecordsTest</span> <span class="o">{</span>
+
+	// <b class="conum">(1)</b>
+	<span class="n">record</span> <span class="nf">Customer</span><span class="o">(</span><span class="nc">Integer</span> <span class="n">id</span><span class="o">,</span> <span class="nc">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+	<span class="o">}</span>
+
+	<span class="n">record</span> <span class="nf">Order</span><span class="o">(</span><span class="nc">Integer</span> <span class="n">id</span><span class="o">,</span> <span class="kt">double</span> <span class="n">total</span><span class="o">)</span> <span class="o">{</span>
+	<span class="o">}</span>
+
+	<span class="n">record</span> <span class="nf">CustomerOrders</span><span class="o">(</span><span class="nc">Customer</span> <span class="n">customer</span><span class="o">,</span> <span class="nc">List</span><span class="o">&lt;</span><span class="nc">Order</span><span class="o">&gt;</span> <span class="n">orders</span><span class="o">)</span> <span class="o">{</span>
+	<span class="o">}</span>
+
+	<span class="nd">@Test</span>
+	<span class="kt">void</span> <span class="nf">records</span><span class="o">()</span> <span class="o">{</span>
+		<span class="kt">var</span> <span class="n">customer</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Customer</span><span class="o">(</span><span class="mi">253</span><span class="o">,</span> <span class="s">"Tammie"</span><span class="o">);</span>
+		<span class="kt">var</span> <span class="n">order1</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Order</span><span class="o">(</span><span class="mi">2232</span><span class="o">,</span> <span class="mf">74.023</span><span class="o">);</span>
+		<span class="kt">var</span> <span class="n">order2</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Order</span><span class="o">(</span><span class="mi">9593</span><span class="o">,</span> <span class="mf">23.44</span><span class="o">);</span>
+		<span class="kt">var</span> <span class="n">cos</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">CustomerOrders</span><span class="o">(</span><span class="n">customer</span><span class="o">,</span> <span class="nc">List</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="n">order1</span><span class="o">,</span> <span class="n">order2</span><span class="o">));</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">order1</span><span class="o">.</span><span class="na">id</span><span class="o">(),</span> <span class="mi">2232</span><span class="o">);</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">order1</span><span class="o">.</span><span class="na">total</span><span class="o">(),</span> <span class="mf">74.023</span><span class="o">);</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">customer</span><span class="o">.</span><span class="na">name</span><span class="o">(),</span> <span class="s">"Tammie"</span><span class="o">);</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">cos</span><span class="o">.</span><span class="na">orders</span><span class="o">().</span><span class="na">size</span><span class="o">(),</span> <span class="mi">2</span><span class="o">);</span>
+		<span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"order components  "</span> <span class="o">+</span>  <span class="n">order1</span><span class="o">.</span><span class="na">id</span><span class="o">()</span> <span class="o">+</span> <span class="sc">':'</span> <span class="o">+</span> <span class="n">order1</span><span class="o">.</span><span class="na">total</span><span class="o">());</span> // <b class="conum">(2)</b>
+	<span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>these three <code>record</code> definitions define three new types, each with accessors, constructors, and internal storage.
+Scarcely more than three lines of code for three brand new types!</p>
+</li>
+<li>
+<p>records also automatically expose accessor methods for the fields defined in the constructor.
+For example, if you want to read the <code>name</code> field of the <code>Customer</code> type, use <code>Customer#name()</code>.
+If you wish to read the <code>orders</code> field of the <code>CustomerOrders</code> type, use <code>orders()</code>.
+It took a while to accept that they they&#8217;re in the form <code>x()</code>, and not in the form <code>getX()</code>, but I&#8217;ve come to love it.
+Mercifully, all the interesting libraries that need to know about this convention - JSON serializers, for example - already work well with it.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Records make perfect sense for immutable, data-centric types.
+They alleviate a whole host of boilerplate code.
+In the first edition of this book, I used the <a href="https://projectlombok.org">Lombok project</a> (which is brilliant) to synthesize the getters, setters, no-args, and all-arg constructors with just a few annotations.
+It worked, but it was still a handful of lines instead of the one-liners enabled by Java records.
+I love records!</p>
+</div>
+<div class="paragraph">
+<p>I still occasionally use Lombok for other things, but it&#8217;s nice to reduce my reliance on it further.</p>
+</div>
+<div class="paragraph">
+<p>More controversially, I also sometimes use records to implement services and components quickly.
+After all, you can have methods on a record.
+Of course, record implementations can&#8217;t extend classes, but one doesn&#8217;t need to do that a lot.
+There is the undesirable side-effect of having accessor-methods that expose the state - <code>dataSource()</code> or whatever - but, for whatever reason, I don&#8217;t care.
+It doesn&#8217;t cost me anything when I use it.
+If my code grows large enough to need hierarchies or interface implementations, I&#8217;ll change it.
+If the code grows enough to worry about the leaking state, I&#8217;ll change it.
+But the immediate, short-term effect of having more concise, approachable, readable code seems to make sense to me.
+Maybe one day that&#8217;ll change?</p>
+</div>
+<div class="paragraph">
+<p>Behind the scenes, a record creates a default constructor whose parameters match the types and rarity of the record header.
+Records can have other constructors, but they need to delegate to the default constructor.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded.records</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.util.Assert</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.util.StringUtils</span><span class="o">;</span>
+
+<span class="kd">class</span> <span class="nc">RecordConstructorsTest</span> <span class="o">{</span>
+
+	<span class="n">record</span> <span class="nf">Customer</span><span class="o">(</span><span class="nc">Integer</span> <span class="n">id</span><span class="o">,</span> <span class="nc">String</span> <span class="n">email</span><span class="o">)</span> <span class="o">{</span> // <b class="conum">(1)</b>
+
+		<span class="nc">Customer</span> <span class="o">{</span> // <b class="conum">(2)</b>
+			<span class="nc">Assert</span><span class="o">.</span><span class="na">notNull</span><span class="o">(</span><span class="n">id</span><span class="o">,</span> <span class="o">()</span> <span class="o">-&gt;</span> <span class="s">"the id must never be null!"</span><span class="o">);</span>
+			<span class="nc">Assert</span><span class="o">.</span><span class="na">isTrue</span><span class="o">(</span><span class="nc">StringUtils</span><span class="o">.</span><span class="na">hasText</span><span class="o">(</span><span class="n">email</span><span class="o">),</span> <span class="o">()</span> <span class="o">-&gt;</span> <span class="s">"the email is invalid"</span><span class="o">);</span>
+		<span class="o">}</span>
+
+		<span class="nc">Customer</span><span class="o">(</span><span class="nc">String</span> <span class="n">email</span><span class="o">)</span> <span class="o">{</span>
+			<span class="k">this</span><span class="o">(-</span><span class="mi">1</span><span class="o">,</span> <span class="n">email</span><span class="o">);</span>
+		<span class="o">}</span>
+	<span class="o">}</span>
+
+	<span class="nd">@Test</span>
+	<span class="kt">void</span> <span class="nf">multipleConstructors</span><span class="o">()</span> <span class="o">{</span>
+		<span class="kt">var</span> <span class="n">customer1</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Customer</span><span class="o">(</span><span class="s">"test@email.com"</span><span class="o">);</span>
+		<span class="kt">var</span> <span class="n">customer2</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Customer</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="s">"test2@gmail.com"</span><span class="o">);</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">customer1</span><span class="o">.</span><span class="na">id</span><span class="o">(),</span> <span class="o">-</span><span class="mi">1</span><span class="o">);</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">customer2</span><span class="o">.</span><span class="na">id</span><span class="o">(),</span> <span class="mi">2</span><span class="o">);</span>
+	<span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>the default constructor is the one defined in the record header</p>
+</li>
+<li>
+<p>If you want to act on the fields passed in the default constructor, create a constructor with no parameters and do the work there.
+This no-parameter constructor and the record header taken together are the default constructor.
+If you want to have an alternative constructor, you can do that so long as you forward to the default constructor.
+I use the default constructor to initialize the <code>id</code> to <code>-1</code>.
+This way, it&#8217;s impossible to initialize the record with a <code>null</code> <code>id</code> field.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_sealed_types">Sealed Types</h3>
+<div class="paragraph">
+<p>Sealed types are a novel feature that hasn&#8217;t reached its full potential yet.
+The basic idea is to constrain the number of subtypes for a given type.
+Why would you do this?
+Well, it&#8217;s all a bit <em>exhausting</em>!
+Or should I say, it&#8217;s all about exhausting the extent to which the runtime needs to support virtual (polymorphic) dispatch?</p>
+</div>
+<div class="paragraph">
+<p>Sound complicated?
+It&#8217;s not really.
+Ever have a method in a parent type that the child type overrides?
+The ability to call that method on an instance of that child type, in terms of the parent type&#8217;s interface, is called polymorphism.</p>
+</div>
+<div class="paragraph">
+<p>Polymorphic, or <em>virtual</em>, dispatch requires a lookup in the virtual function table, which in theory takes time.
+The runtime wouldn&#8217;t have to do that if it could say conclusively that a given type can never be subclassed, such as with a final type.
+The <code>final</code> keyword is a bit of a sledgehammer, however.
+It forecloses entirely on the possibility of on any kind whatsoever subclassing the final type.
+You might have a hierarchy but wish to keep it shallow, and well-known.
+Alternatively, you could make everything package-private (simply omit <code>public</code> modifier on the class), which means that only types in the same class could subclass the type.
+This would probably work, but of course, somebody else could come along and create types in the same package in their <code>.jar</code>.
+There&#8217;s traditionally not been a lot of great ways to keep a hierarchy shallow until now.
+Sealed types can help.
+They let you constrain the number of subclasses to a known set.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s look at an example that is building out a</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.springframework.util.Assert</span><span class="o">;</span>
+
+<span class="kd">class</span> <span class="nc">SealedTypesTest</span> <span class="o">{</span>
+
+	// <b class="conum">(1)</b>
+	<span class="n">sealed</span> <span class="kd">interface</span> <span class="nc">Shape</span> <span class="n">permits</span> <span class="nc">Oval</span><span class="o">,</span> <span class="nc">Polygon</span> <span class="o">{</span>
+
+	<span class="o">}</span>
+
+	// <b class="conum">(2)</b>
+	<span class="kd">static</span> <span class="n">sealed</span> <span class="kd">class</span> <span class="nc">Oval</span> <span class="kd">implements</span> <span class="nc">Shape</span> <span class="n">permits</span> <span class="nc">Circle</span> <span class="o">{</span>
+
+	<span class="o">}</span>
+
+	<span class="kd">static</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">Circle</span> <span class="kd">extends</span> <span class="nc">Oval</span> <span class="o">{</span>
+
+	<span class="o">}</span>
+
+	<span class="kd">static</span> <span class="kd">final</span> <span class="kd">class</span> <span class="nc">Polygon</span> <span class="kd">implements</span> <span class="nc">Shape</span> <span class="o">{</span>
+
+	<span class="o">}</span>
+
+	// <b class="conum">(3)</b>
+	<span class="c1">// static final class Rhombus implements Shape {}</span>
+
+	// <b class="conum">(4)</b>
+	<span class="kd">private</span> <span class="nc">String</span> <span class="nf">describeShape</span><span class="o">(</span><span class="nc">Shape</span> <span class="n">shape</span><span class="o">)</span> <span class="o">{</span>
+		<span class="nc">Assert</span><span class="o">.</span><span class="na">notNull</span><span class="o">(</span><span class="n">shape</span><span class="o">,</span> <span class="o">()</span> <span class="o">-&gt;</span> <span class="s">"the shape should never be null!"</span><span class="o">);</span>
+		<span class="k">if</span> <span class="o">(</span><span class="n">shape</span> <span class="k">instanceof</span> <span class="nc">Oval</span><span class="o">)</span>
+			<span class="k">return</span> <span class="s">"round"</span><span class="o">;</span>
+		<span class="k">if</span> <span class="o">(</span><span class="n">shape</span> <span class="k">instanceof</span> <span class="nc">Polygon</span><span class="o">)</span>
+			<span class="k">return</span> <span class="s">"straight"</span><span class="o">;</span>
+		<span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">"we should never get to this point!"</span><span class="o">);</span>
+	<span class="o">}</span>
+
+	<span class="nd">@Test</span>
+	<span class="kt">void</span> <span class="nf">disjointedUnionTypes</span><span class="o">()</span> <span class="o">{</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">describeShape</span><span class="o">(</span><span class="k">new</span> <span class="nc">Oval</span><span class="o">()),</span> <span class="s">"round"</span><span class="o">);</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">describeShape</span><span class="o">(</span><span class="k">new</span> <span class="nc">Polygon</span><span class="o">()),</span> <span class="s">"straight"</span><span class="o">);</span>
+	<span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>we&#8217;ll start with a <code>Shape</code> and permit two direct subclasses, <code>Oval</code> and <code>Polygon</code>.</p>
+</li>
+<li>
+<p>a subclass of a sealed type must be <code>final</code> or <code>sealed</code> and explicitly name its subclasses.
+A sealed type&#8217;s subclasses may themselves be sealed types, permitting further subtypes.</p>
+</li>
+<li>
+<p>the following declaration does not compile, as it is not one of the explicitly permitted subclasses</p>
+</li>
+<li>
+<p>the <code>describeShape</code> method is written so that we can exhaustively handle every subclass.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Sealed types help the compiler, too.
+The compiler can exhaustively determine every case of every possible subtype, which has implications for the future, as Java looks to better incorporate simple pattern matching into Java.
+Imagine the possibilities here, and you can kind of see how sealed types might play with the new <code>switch</code> expressions, too.</p>
+</div>
+<div class="paragraph">
+<p>Right now, I don&#8217;t recommend using <code>sealed</code> types.
+I tend to think types should be open by default.
+You just don&#8217;t know what scenario will arise in the future that changes your fundamental assumptions.
+Furthermore, sealed subtypes are <code>final</code>, inhibiting tools like Spring and Hibernate, which must subclass your types to proxy them.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_smart_casts">Smart Casts</h3>
+<div class="paragraph">
+<p>This feature is one of those things that I don&#8217;t use all that often in application code, but it&#8217;s pretty useful when writing infrastructure code when dealing with polymorphism.
+Essentially, the feature spares you from having to create an intermediate variable and casting after you&#8217;ve already done an <code>instanceof</code> check.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.util.HashSet</span><span class="o">;</span>
+
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">SmartCastsTest</span> <span class="o">{</span>
+
+    <span class="nd">@Test</span>
+    <span class="kt">void</span> <span class="nf">casts</span><span class="o">()</span> <span class="o">{</span>
+        <span class="kd">interface</span> <span class="nc">Animal</span> <span class="o">{</span>
+
+            <span class="nc">String</span> <span class="nf">speak</span><span class="o">();</span>
+
+        <span class="o">}</span>
+
+        <span class="kd">class</span> <span class="nc">Cat</span> <span class="kd">implements</span> <span class="nc">Animal</span> <span class="o">{</span>
+
+            <span class="nd">@Override</span>
+            <span class="kd">public</span> <span class="nc">String</span> <span class="nf">speak</span><span class="o">()</span> <span class="o">{</span>
+                <span class="k">return</span> <span class="s">"meow!"</span><span class="o">;</span>
+            <span class="o">}</span>
+
+        <span class="o">}</span>
+
+        <span class="kd">class</span> <span class="nc">Dog</span> <span class="kd">implements</span> <span class="nc">Animal</span> <span class="o">{</span>
+
+            <span class="nd">@Override</span>
+            <span class="kd">public</span> <span class="nc">String</span> <span class="nf">speak</span><span class="o">()</span> <span class="o">{</span>
+                <span class="k">return</span> <span class="s">"woof!"</span><span class="o">;</span>
+            <span class="o">}</span>
+
+        <span class="o">}</span>
+
+        <span class="kt">var</span> <span class="n">newPet</span> <span class="o">=</span> <span class="nc">Math</span><span class="o">.</span><span class="na">random</span><span class="o">()</span> <span class="o">&lt;</span> <span class="o">.</span><span class="mi">5</span> <span class="o">?</span> <span class="k">new</span> <span class="nc">Cat</span><span class="o">()</span> <span class="o">:</span> <span class="k">new</span> <span class="nc">Dog</span><span class="o">();</span>
+        <span class="kt">var</span> <span class="n">messages</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">HashSet</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;();</span>
+
+        // <b class="conum">(1)</b>
+        <span class="k">if</span> <span class="o">(</span><span class="n">newPet</span> <span class="k">instanceof</span> <span class="nc">Cat</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kt">var</span> <span class="n">cat</span> <span class="o">=</span> <span class="o">(</span><span class="nc">Cat</span><span class="o">)</span> <span class="n">newPet</span><span class="o">;</span>
+            <span class="n">messages</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"the cat says "</span> <span class="o">+</span> <span class="n">cat</span><span class="o">.</span><span class="na">speak</span><span class="o">());</span>
+        <span class="o">}</span>
+        // <b class="conum">(2)</b>
+        <span class="k">if</span> <span class="o">(</span><span class="n">newPet</span> <span class="k">instanceof</span> <span class="nc">Cat</span> <span class="n">cat</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">messages</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"the cat says "</span> <span class="o">+</span> <span class="n">cat</span><span class="o">.</span><span class="na">speak</span><span class="o">());</span>
+        <span class="o">}</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">newPet</span> <span class="k">instanceof</span> <span class="nc">Dog</span> <span class="n">dog</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">messages</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"the dog says "</span> <span class="o">+</span> <span class="n">dog</span><span class="o">.</span><span class="na">speak</span><span class="o">());</span>
+        <span class="o">}</span>
+
+        <span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">messages</span><span class="o">.</span><span class="na">size</span><span class="o">(),</span> <span class="mi">1</span><span class="o">);</span>
+        <span class="nc">Assertions</span><span class="o">.</span><span class="na">assertTrue</span><span class="o">(</span><span class="n">messages</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="s">"the dog says woof!"</span><span class="o">)</span> <span class="o">||</span> <span class="n">messages</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="s">"the cat says meow!"</span><span class="o">));</span>
+
+    <span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>this is a classic example, where we determine the subtype and then create a variable cast to the appropriate type.
+If ever we change the type definition, we have to replace it both in the cast and in the <code>instanceof</code> check.</p>
+</li>
+<li>
+<p>the more excellent, newer alternative uses a smart-cast, sparing us the extra variable and cast.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>This feature looks almost exactly like a similar feature in Kotlin, and I love it.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_function_interfaces_lambdas_and_method_references">Function Interfaces, Lambdas  and Method References</h3>
+<div class="paragraph">
+<p>Java 8 introduced lambdas.
+They let us treat functions as first-class citizens that can be assigned and passed around.
+Well, almost.
+In Java, lambdas are slightly limited; they&#8217;re <em>not</em> first-class citizens.
+But, close enough!
+They <em>must</em> have return values and input parameters compatible with the method signature of the sole abstract method of an interface.
+This interface, one with a single abstract method intended for use as a lambda, is called a <em>functional interface</em>.
+(Interfaces may also have <em>default</em>, non-abstract methods where the interface provides an implementation.)</p>
+</div>
+<div class="paragraph">
+<p>There are some very convenient and oft-used functional interfaces in the JDK itself.
+Here are some of my favorites.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>java.util.function.Function&lt;I, O&gt;</code>: an instance of this interface accepts a type <code>I</code> and returns a type ` O'.
+This is useful as a general-purpose function.
+Every other function could, in theory, be generalized from this.
+Thankfully, there&#8217;s no need for that as several other handy functional interfaces exist.</p>
+</li>
+<li>
+<p><code>java.util.function.Predicate&lt;T&gt;</code>: an instance of this interface accepts a type <code>T</code> and returns a <code>boolean</code>.
+This is an ideal filter when you&#8217;re trying to sift through a stream of values.</p>
+</li>
+<li>
+<p><code>java.util.function.Supplier&lt;T&gt;</code>: A supplier accepts no input and returns an output.</p>
+</li>
+<li>
+<p><code>java.util.function.Consumer&lt;T&gt;</code>: A consumer is the mirror image of a <code>Supplier&lt;T&gt;</code>; it takes an input and returns no output.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>You can also create and use your custom functional interfaces.
+Let&#8217;s look at some examples.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="kn">package</span> <span class="nn">bootiful.javareloaded</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Assertions</span><span class="o">;</span>
+<span class="kn">import</span> <span class="nn">org.junit.jupiter.api.Test</span><span class="o">;</span>
+
+<span class="kn">import</span> <span class="nn">java.util.function.Function</span><span class="o">;</span>
+
+<span class="kd">class</span> <span class="nc">LambdasTest</span> <span class="o">{</span>
+
+	<span class="nd">@Test</span>
+	<span class="kt">void</span> <span class="nf">lambdas</span><span class="o">()</span> <span class="o">{</span>
+		<span class="nc">Function</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">Integer</span><span class="o">&gt;</span> <span class="n">stringIntegerFunction</span> <span class="o">=</span> <span class="n">str</span> <span class="o">-&gt;</span> <span class="mi">2</span><span class="o">;</span>// <b class="conum">(1)</b>
+		<span class="kd">interface</span> <span class="nc">MyHandler</span> <span class="o">{</span>
+
+			<span class="nc">String</span> <span class="nf">handle</span><span class="o">(</span><span class="nc">String</span> <span class="n">one</span><span class="o">,</span> <span class="nc">Integer</span> <span class="n">two</span><span class="o">);</span>
+
+		<span class="o">}</span>
+		<span class="nc">MyHandler</span> <span class="n">withExplicit</span> <span class="o">=</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">two</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="n">one</span> <span class="o">+</span> <span class="sc">':'</span> <span class="o">+</span> <span class="n">two</span><span class="o">;</span>// <b class="conum">(2)</b>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">stringIntegerFunction</span><span class="o">.</span><span class="na">apply</span><span class="o">(</span><span class="s">""</span><span class="o">),</span> <span class="mi">2</span><span class="o">);</span>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">withExplicit</span><span class="o">.</span><span class="na">handle</span><span class="o">(</span><span class="s">"one"</span><span class="o">,</span> <span class="mi">2</span><span class="o">),</span> <span class="s">"one:2"</span><span class="o">);</span>
+		<span class="kt">var</span> <span class="n">withVar</span> <span class="o">=</span> <span class="o">(</span><span class="nc">MyHandler</span><span class="o">)</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">two</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="n">one</span> <span class="o">+</span> <span class="sc">':'</span> <span class="o">+</span> <span class="n">two</span><span class="o">;</span>// <b class="conum">(3)</b>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">withVar</span><span class="o">.</span><span class="na">handle</span><span class="o">(</span><span class="s">"one"</span><span class="o">,</span> <span class="mi">2</span><span class="o">),</span> <span class="s">"one:2"</span><span class="o">);</span>
+		<span class="nc">MyHandler</span> <span class="n">delegate</span> <span class="o">=</span> <span class="k">this</span><span class="o">::</span><span class="n">doHandle</span><span class="o">;</span> // <b class="conum">(4)</b>
+		<span class="nc">Assertions</span><span class="o">.</span><span class="na">assertEquals</span><span class="o">(</span><span class="n">delegate</span><span class="o">.</span><span class="na">handle</span><span class="o">(</span><span class="s">"one"</span><span class="o">,</span> <span class="mi">2</span><span class="o">),</span> <span class="s">"one:2"</span><span class="o">);</span>
+
+	<span class="o">}</span>
+
+	<span class="kd">private</span> <span class="nc">String</span> <span class="nf">doHandle</span><span class="o">(</span><span class="nc">String</span> <span class="n">one</span><span class="o">,</span> <span class="nc">Integer</span> <span class="n">two</span><span class="o">)</span> <span class="o">{</span>
+		<span class="k">return</span> <span class="n">one</span> <span class="o">+</span> <span class="sc">':'</span> <span class="o">+</span> <span class="n">two</span><span class="o">;</span>
+	<span class="o">}</span>
+
+<span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>You can use existing functional interfaces in the JDK&#8230;&#8203;</p>
+</li>
+<li>
+<p>you can define your own interfaces and use them as functional interfaces</p>
+</li>
+<li>
+<p>You may use <code>var</code> and lambdas together with this (admittedly unsightly) cast.</p>
+</li>
+<li>
+<p>and if you have existing methods whose return types and input parameters line up with the single abstract method of a functional interface, then you can create a method reference and assign it to an instance of that type.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_virtual_threads_and_loom">Virtual Threads and Loom</h3>
+<div class="paragraph">
+<p>I wrote a book called <em>Reactive Spring</em>, which embraces the promise of reactive programming on the JVM in terms of the vast Spring ecosystem support around it. I love that book. It taught me about three incredible opportunities in reactive programming.</p>
+</div>
+<div class="sect3">
+<h4 id="_scalable_input_and_output_io">Scalable Input and Output (IO)</h4>
+<div class="paragraph">
+<p>Reactive programming introduces a functional programming model that gives a reactive runtime more fine grained opportunities to move work on and off threads. Threads on the JVM, prior to Java 21, have been expensive to create. They take up a good deal in RAM - about two megabytes per thread, making it prohibitive to create many of them.  Prior to Java 21, traditional input and output (using <code>java.io.InputStream</code> and <code>java.io.OutputStream</code>) was said to be <em>blocking</em>. Suppose you have a Java thread in which you&#8217;re reading data from a network client. You call <code>InputStream#read()</code>, but can&#8217;t be sure it will return in time.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>composition</strong>:</p>
+</li>
+<li>
+<p><strong>robustness</strong>:</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_next_steps">Next Steps</h3>
+<div class="paragraph">
+<p>I didn&#8217;t intend for this chapter to be a thorough introduction to all things Java.
+Just an amuse-bouche for all the cool stuff you might see me do in my code independent of Spring.
+Java 17 is a very compelling way to write code, and it&#8217;s no coincidence that it&#8217;s starting to look more and more like languages like Kotlin, which is also a lovely way to write Spring Boot-based applications.
+Hopefully, this chapter has been persuasive, and you&#8217;re ready to turn the page.</p>
+</div>
 </div>
 </div>
 </div>
