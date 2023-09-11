@@ -315,19 +315,20 @@ spring.sql.init.mode=always
 # <2>
 spring.sql.init.schema-locations=classpath:sql/schema/*sql
 # <3>
-spring.sql.init.data-locations=classpath:sql/data/*sql
+# spring.sql.init.data-locations=classpath:sql/data/*sql
 ----
 
 <1> This tells Spring Boot to initialize the SQL database with the schema in `src/main/resources/schema.sql` and `src/main/resources/data.sql`.
 Be sure to disable this property in production!
 <2> This tells Spring Boot to not use `schema.sql` specifically, but to instead use _all_ `.sql` files in `src/main/resources/sql/schema/`.
 This way, we can keep the various DDL statements separate.
-<3> This tells Spring Boot to not use `data.sql` specifically, but to instead use _all_ `.sql` files in `src/main/resources/sql/data/`.
+<3> If enabled, this line tells Spring Boot to not use `data.sql` specifically, but to instead use _all_ `.sql` files in `src/main/resources/sql/data/`.
 This way, we can keep the inserts separate.
+Make sure to create this directory if you enable this property.
 
-==== A Brief Note on Passwords
+==== A Brief Note on Storing Credentials
 
-Every time you see a password in the source code of these programs, remember, this is a _demonstration_.
+Every time you see a password, or any kind of credential like a key, in the source code of these programs, remember, this is a _demonstration_.
 There are a million ways to externalize usernames and passwords from the source code and that's going to be up to you to figure out.
 Every time you see a password, you should tell yourself: that _should've been at the very least an environment variable_!
 You shouldn't see passwords in `.sql` files, `.yaml`, `.properties`, and especially not in `.java` source code on Github.
@@ -349,7 +350,7 @@ But that may change, and when the default changes, existing passwords will conti
 
 We'll use the `PasswordEncoder` more later.
 
-==== Users
+==== Persisting Users
 
 There are other implementations of the `UserDetailsService` interface that you can use to persist users durably.
 Thinking from a more operational perspective, it's possible you'd want to dynamically register users dynamically, rather than having to restart the Spring Authorization Server instance after you've updated the source code.
@@ -376,10 +377,9 @@ include::authorization-server/src/main/java/bootiful/authorizationserver/UsersCo
 <2> Poor Rob Winch's eyes! why are there passwords just strewn about our Java source code?
 Remember what we talked about earlier: don't do this in production code!
 
-==== Clients
+==== Persisting Clients
 
 The `RegisteredClientRepository` interface is trivial and lends itself to implementation with a persistent store.
-
 It's easy enough to do that here, too, with implementations of the `RegisteredClientRepository`.
 There's an implementation called `JdbcRegisteredClientRepository` that uses JDBC to manage registered clients.
 It would be a fairly trivial project to implement alternatives using other persistence mechanisms like MongoDB or Hashicorp Vault.
@@ -405,7 +405,7 @@ include::authorization-server/src/main/java/bootiful/authorizationserver/Clients
 <1> register the `RegisteredClientRepository`
 <2> this installs a registered client that's more or less equivalent to what we saw earlier in the `application.yml` properties file.
 
-==== Authorizations
+==== Persisting Authorizations
 
 Remember that bit where you got redirected to the Spring Authorization Server and had to click a checkbox to confirm that the user had `user.read` scope?
 That fact - the consent of the scope - is stored in memory by default, but it could be stored in a database too.
@@ -435,7 +435,7 @@ The changes we've made replace all `blob` types with `text`.
 include::authorization-server/src/main/resources/sql/schema/oauth2-authorization-consent-schema.sql[]
 -----
 
-==== The HTTP Sessions themselves
+==== Persisting the HTTP Sessions Themselves
 
 The final piece of the persistence pie is to persist the actual HTTP sessions themselves.
 Spring Authorization Server assumes a Servlet container is present somewhere.
@@ -467,10 +467,56 @@ Create a file `src/main/resources/sql/schema/spring-session-jdbc.sql`.
 include::authorization-server/src/main/resources/sql/schema/spring-session-jdbc.sql[]
 -----
 
+==== Persisting the JWKs
+
+Every time the Spring Authorization Server starts up, the Spring Boot autoconfiguration kicks in generating new keys for our application.
+It uses the keys to sign the JWT tokens that it vends for our other applications.
+Other applications - clients, microservices, etc. - retain these tokens, sometimes for hours or days or even weeks!
+What happens when you restart the Spring Authorization Server, it autocreates new keys, and then a client with a JWT signed with the old keys tries to connect?
+It fails!
+Having the Spring Authorization Server generate random tokens on every restart can be quite a boon to getting started, but we should furnish our own, stable key if we want the JWTs to survive restarts.
+And load balancing, for that matter!
+After all, each instance of the JVM would, by default, have different keys.
+We're going to add two new files, a private and a public key, and use that to create a `JWKSource<SecurityContext>`.
+
+Generate a key pair.
+You can use `ssh-keygen` to create the keys, like this.
+
+[source,shell]
+----
+ssh-keygen -t rsa
+----
+
+You'll get two artifacts.
+Copy them both, the private and public key, to the `src/main/resources` folder: the private key should be called `app.key`, and the public key should be called `app.pub`.
+
+I created three (arbitrary) properties in `application.properties` to describe these keys and assign them an ID.
+
+[source,properties]
+----
+jwt.key.id=configured-jwt-key-1234567890
+jwt.key.private=classpath:app.key
+jwt.key.public=classpath:app.pub
+----
+
+We'll use the properties when we define the `JwkSource<ServerContext>` bean.
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/KeyConfiguration.java[]
+----
+
+In this example, I've kept the private key in the source code of this repository, but as you can imagine, this is a very bad idea in production.
+Don't forget my admonition earlier: take care to handle your credentials securely.
+Perhaps in something like Hashicorp Vault!
+
+=== To Production... and Beyond!
+
 And that's it!
 Restart the Spring Authorization Server.
-Now you can run more than one instance of the Spring Authorization Server behind a load balancer, and no matter to which instance a client and its cookies present themselves, the container will resolve the session from the PostgreSQL database.
-By the way, is now a good time to remind you not to stash sensitive stuff in the HTTP session?
+Now you can run more than one instance of the Spring Authorization Server behind a load balancer, and no matter to which instance a client and its cookies present themselves, the container will resolve the session, authorizations, information about clients from the PostgreSQL database.
+It'll also sign keys in a consistent fashion.
+Is now a good time to remind you not to stash sensitive stuff in the HTTP session?
 You never know when it's going to be serialized to some datastore...
 
 == Protecting a Simple HTTP API
@@ -956,7 +1002,7 @@ Each branch produces a value, and that value is the result of the `switch` expre
 
 === Multiline Strings
 
-This one is a super small feature that punches well above its weight: Java supports multiline `String`s: hooray!
+This one is a super-small feature that punches well above its weight: Java supports multiline `String`s: hooray!
 There are a million opportunities for multiline `String`s: SQL queries, HTML, Markdown, Asciidoctor, Velocity templating (such as for emails), unit testing, etc.
 
 [source,java,indent=0]
@@ -1136,19 +1182,53 @@ include::java/src/test/java/bootiful/javareloaded/LambdasTest.java[]
 <3> You may use `var` and lambdas together with this (admittedly unsightly) cast.
 <4> and if you have existing methods whose return types and input parameters line up with the single abstract method of a functional interface, then you can create a method reference and assign it to an instance of that type.
 
+=== Java 21, Project Loom, and Virtual Threads
 
-=== Virtual Threads and Loom
+Project Loom brings transparent fibers to the JVM.
+As things stand today, in Java 20 or earlier, IO is blocking.
+Call `int InputStream#read()`, and you might have to wait for the next byte to finally arrive.
+In `java.io.File`-centric IO, there's very rarely much of a delay.
+On the network, however, you just can't really ever know.
+Clients might disconnect.
+Clients be people, driving through a tunnel and getting spotty signal coverage.
+During this time, the program flow is said to be _blocked_ from proceeding on the thread of execution.
+In the following snippet, we have no way of knowing when we'll see the word "after" printed.
+Might be a nanosecond from now.
+Might be a week from now.
+It's _blocking_.
 
-I wrote a book called _Reactive Spring_, which embraces the promise of reactive programming on the JVM in terms of the vast Spring ecosystem support around it. I love that book. It taught me about three incredible opportunities in reactive programming.
+[source,java]
+----
+include::java/snippets/traditional-io[]
+----
 
-==== Scalable Input and Output (IO)
-Reactive programming introduces a functional programming model that gives a reactive runtime more fine grained opportunities to move work on and off threads. Threads on the JVM, prior to Java 21, have been expensive to create. They take up a good deal in RAM - about two megabytes per thread, making it prohibitive to create many of them.  Prior to Java 21, traditional input and output (using `java.io.InputStream` and `java.io.OutputStream`) was said to be _blocking_. Suppose you have a Java thread in which you're reading data from a network client. You call `InputStream#read()`, but can't be sure it will return in time.
+This means that we can't address any other requests with this thread until it's finished doing whatever it was doing.
+We'll need more threads.
 
-* **composition**:
-* **robustness**:
+This is bad enough, but it's made worse by the architecture of threading in Java prior to Java 21 where each thread maps, more or less, to a native operating system thread.
+It's expensive to create more threads, too, taking about two megabytes of RAM.
+We're going to need a _lot_ of threads to handle requests if our existing threads are blocked long enough.
+Many, many, times more threads.
+Or, we're going to need to find a way to avoid _blocking_ on the precious few threads we do have.
 
-// show the network server example u wrote yesterday
+We could use non-blocking IO, as enabled by Java NIO (java.nio.\*).
+In this model, you ask for bytes and register a callback that the runtime executes only when there are actually bytes available.
+No waiting, no blocking.
+This approach has the significant benefit of keeping us off threads when there's nothing to be done, allowing others to use those threads in the meantime.
+It's a bit tedious, however, and low-level.
+Spring has amazing support for reactive programming, which offers a functional-style programming model on top of non-blocking IO.
+It works well.
+But, it requires changing the way you write code.
+If you're not used to it, it can be a bit daunting, too.
+Wouldn't it be nice if you could just take that existing code, as demonstrated above, and have it do the right thing, transparently moving the flow of execution off the thread when there's nothing happening, and then resuming the flow of execution when there is?
+This way, we could keep our relatively simpler code, and get the benefits of non-blocking IO.
+Absolutely it would.
+That's the promise of Project Loom and its new _virtual threads_.
+It's easy enough to change the code above to use these new _virtual threads_, too:
+`ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor())`, and it just works!
 
+Why do I mention project Loom?
+Well, the Spring Authorization Server is built on blocking technologies like JDBC and the Servlet abstraction, but if you run them on Project Loom, with Spring Boot 3.2's virtual threads support enabled, you'll get to have your cake and eat it too: scalable, but simpler, code.
 
 === Next Steps
 

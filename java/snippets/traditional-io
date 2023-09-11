@@ -1,0 +1,7 @@
+Executor executor = Executors.newCachedThreadPool();
+executor.submit(() -> {
+    InputStream in = ...
+    System.out.println("before");
+    int next = in.read();
+    System.out.println("after");
+});
