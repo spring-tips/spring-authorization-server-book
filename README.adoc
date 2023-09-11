@@ -11,7 +11,7 @@ Let's dive right into it.
 == Introducing the Spring Authorization Server
 
 Hi, Spring fans!
-In this installment we're going to look at some patterns and practices for working with the Spring Authorization Server, and with OAuth in general in a Spring Boot-based system.
+We're going to look at some patterns and practices for working with the Spring Authorization Server, and with OAuth in general in a Spring Boot-based system.
 
 The Spring Authorization Server is one of my favorite new projects.
 It's a full-blown OAuth identity provider (IDP), distributed as Spring Boot autoconfiguration.
@@ -27,7 +27,13 @@ I don't know an easier way to get as configurable and flexible IDP up-and-runnin
 Having an easy component for your IDP integration is _liberating_.
 If nothing else, it's one less `users` microservice for you to build.
 But, at its best, it's a unifying force for your organization's notions of identity and policy, all centralized.
+
 If you implement it correctly, it's one less `users` microservice for _all_ of your systems, not just the one you're working on now!
+You'll have one less bespoke token management system, too.
+OAuth offers a very nice opportunity to make your application more efficient and scalable.
+In a typical monolithic application, password validation is done in the same node where the rest of the business logic lives.
+CPU-intensive encryption will starve the rest of the requests of capacity.
+You'll also have outsourced some of the expensive CPU-centric processing that your program will probably have to do a single place in the system, where it can be scaled independently.
 
 It's Spring, so it of course supports the new-and-novel, but it's also built like all Spring Boot autoconfiguration, with hooks and customization in mind at every step.
 
