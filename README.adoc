@@ -335,10 +335,42 @@ Make sure to create this directory if you enable this property.
 ==== A Brief Note on Storing Credentials
 
 Every time you see a password, or any kind of credential like a key, in the source code of these programs, remember, this is a _demonstration_.
-There are a million ways to externalize usernames and passwords from the source code and that's going to be up to you to figure out.
-Every time you see a password, you should tell yourself: that _should've been at the very least an environment variable_!
-You shouldn't see passwords in `.sql` files, `.yaml`, `.properties`, and especially not in `.java` source code on Github.
-There are far better solutions including the Spring Cloud Config Server and the Spring Cloud Vault integration.
+There are a million ways to externalize credentials from the source code, and you should use one of them!
+
+It's essential to keep credentials both secure and accessible for the applications that need them, without risking exposure.
+Here are some methods and tools to store and make private keys accessible to a Spring Boot application:
+
+* **Environment Variables**: One of the most common ways is to use environment variables to store sensitive data.
+These variables can be set on the system where your application runs.
+This method separates configuration from the application, but it's not the most secure method on its own, especially if multiple applications share the environment.
+* **Java's KeyStore (JKS/JCEKS)**: Java provides its built-in mechanism for securely storing cryptographic keys and certificates - Java KeyStore.
+* **AWS Secrets Manager or AWS Parameter Store**: If you are deploying on AWS, you can use these services to store and retrieve your application secrets.
+* **HashiCorp Vault**: An open-source tool for secret management.
+It allows you to centrally store, access, and deploy secrets across applications and infrastructure.
+* **Azure Key Vault**: If you are on Azure, you can use Azure Key Vault to store, manage, and access secrets.
+* **Google Cloud Secret Manager**: For applications deployed on GCP.
+* **Encrypted Configuration Files**: Use tools like Jasypt with Spring Boot.
+Jasypt provides Spring Boot integration and allows you to encrypt property values in your configuration files.
+* **Kubernetes Secrets**: If you are deploying your application in Kubernetes, it offers its own secrets management mechanism.
+Though it is better than plain config maps (`ConfigMap`), Kubernetes Secrets are Base64 encoded by default and not encrypted.
+For enhanced security, consider integrating with external secrets managers like HashiCorp Vault.
+* **Dedicated Hardware Security Modules (HSMs)**: These are physical devices that safeguard and manage digital keys, perform encryption and decryption.
+Cloud providers like AWS offer their own cloud HSM services.
+* **Use Configuration Servers**: For example, Spring Cloud Config Server.
+Though not a secrets manager _per se_, when combined with encryption, it can serve configurations securely to your applications.
+
+Always encrypt sensitive data in transit and at rest.
+Rotate secrets regularly.
+Use IAM roles, policies, and least privilege principles to restrict who can access secrets.
+Monitor and audit access to secrets.
+Avoid hardcoding secrets or placing them in a version control system (VCS), even if encrypted.
+Backup your secrets, but ensure backups are also secured.
+No matter which approach you choose, it's essential to keep the principle of least privilege in mind.
+Only the necessary entities should have access to your secrets, and they should only be decrypted at the last possible moment (e.g., by the application when needed).
+
+
+//
+
 
 Also, we're going to need to encode passwords so that they're not lying around at rest in plain text.
 Define a bean of type `PasswordEncoder` for use in your program.
@@ -486,23 +518,32 @@ After all, each instance of the JVM would, by default, have different keys.
 We're going to add two new files, a private and a public key, and use that to create a `JWKSource<SecurityContext>`.
 
 Generate a key pair.
-You can use `ssh-keygen` to create the keys, like this.
+You'll need `openssl` or `ssh-keygen` installed.
 
 [source,shell]
 ----
-ssh-keygen -t rsa
+# <1>
+openssl genpkey -algorithm RSA -out private_key.pem
+openssl pkcs8 -topk8 -inform PEM -outform PEM -in private_key.pem -out private_key_pkcs8.pem -nocrypt
+openssl rsa -pubout -in private_key_pkcs8.pem -out public_key.pem
+mv private_key.pem app.key
+mv public_key.pem app.pub
+# <2>
+openssl req -new -x509 -key private_key_pkcs8.pem -out cert.pem -days 365
 ----
+<1> make sure you execute all the following commands in a new, empty directory. It's important that some of the generated files aren't lost in the wildnerness of whatever busy folder you happen to have created them.
+<2> this command exports a self-signed certificate (valid for 365 days) that you could (optionally) use if you wanted to store the file in the Java KeyStore as a PKCS13 file.
 
-You'll get two artifacts.
+You'll get two artifacts, `app.pub` and `app.key`.
 Copy them both, the private and public key, to the `src/main/resources` folder: the private key should be called `app.key`, and the public key should be called `app.pub`.
 
 I created three (arbitrary) properties in `application.properties` to describe these keys and assign them an ID.
 
 [source,properties]
 ----
-jwt.key.id=configured-jwt-key-1234567890
-jwt.key.private=classpath:app.key
-jwt.key.public=classpath:app.pub
+jwk.key.id=configured-jwt-key-1234567890
+jwk.key.private=classpath:app.key
+jwk.key.public=classpath:app.pub
 ----
 
 We'll use the properties when we define the `JwkSource<ServerContext>` bean.
@@ -512,9 +553,12 @@ We'll use the properties when we define the `JwkSource<ServerContext>` bean.
 include::authorization-server/src/main/java/bootiful/authorizationserver/KeyConfiguration.java[]
 ----
 
-In this example, I've kept the private key in the source code of this repository, but as you can imagine, this is a very bad idea in production.
+In this example, I've kept the private key (`app.key`) in the source code of this repository, but as you can imagine, this is a **very bad** idea in production.
 Don't forget my admonition earlier: take care to handle your credentials securely.
-Perhaps in something like Hashicorp Vault!
+There are some solid options, including Hashicorp Vault, your favorite hyperscaler cloud's secrets management tools, Lastpass, etc.
+If you need it available for this program, it should be passed into the application in such a way that it's very difficult for others to lay hands on it.
+Perhaps as environment variable in your application's process space?
+Or as an encrypted file that can only be decrypted with a rotating key?
 
 === To Production... and Beyond!
 
