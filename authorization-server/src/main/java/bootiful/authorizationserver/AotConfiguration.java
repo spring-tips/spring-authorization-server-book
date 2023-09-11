@@ -24,6 +24,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ImportRuntimeHints;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -161,6 +162,8 @@ class AotConfiguration {
             });
 
             Set.of("data", "schema").forEach(folder -> hints.resources().registerPattern("sql/" + folder + "/*sql"));
+
+            Set.of("key", "pub").forEach(suffix -> hints.resources().registerResource(new ClassPathResource("app." + suffix)));
 
         }
 
