@@ -72,32 +72,6 @@ class KeyConfiguration {
                 publisher.publishEvent(new RsaKeyPairGenerationRequestEvent(Instant.now()));
         };
     }
-
-  /*  @Bean
-    JdbcRsaKeyPairRepository jdbcRsaKeyPairRepository(RowMapper<RsaKeyPairRepository.RsaKeyPair> keyPairRowMapper,
-                                                      JdbcTemplate template, RsaPrivateKeySerializer rsaPrivateKeySerializer,
-                                                      RsaPublicKeySerializer rsaPublicKeySerializer) {
-        return new JdbcRsaKeyPairRepository(keyPairRowMapper, template,
-                rsaPublicKeySerializer, rsaPrivateKeySerializer);
-    }*/
-
-   /* @Bean
-    RsaPublicKeySerializer rsaPublicKeySerializer() {
-        return new RsaPublicKeySerializer();
-    }
-
-    @Bean
-    RsaPrivateKeySerializer rsaPrivateKeySerializer() {
-        return new RsaPrivateKeySerializer();
-    }
-
-    @Bean
-    RsaKeyPairRowMapper keyPairRowMapper() {
-        return new RsaKeyPairRowMapper(
-                this.rsaPrivateKeySerializer(),
-                this.rsaPublicKeySerializer()
-        );
-    }*/
 }
 
 
