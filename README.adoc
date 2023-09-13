@@ -541,9 +541,9 @@ I created three (arbitrary) properties in `application.properties` to describe t
 
 [source,properties]
 ----
-jwk.key.id=configured-jwt-key-1234567890
-jwk.key.private=classpath:app.key
-jwk.key.public=classpath:app.pub
+jwt.key.id=bootiful-jwt-key-1
+jwt.key.private=classpath:app.key
+jwt.key.public=classpath:app.pub
 ----
 
 We'll use the properties when we define the `JwkSource<ServerContext>` bean.
