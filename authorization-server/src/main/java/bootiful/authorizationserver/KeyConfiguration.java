@@ -15,13 +15,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
+import org.springframework.security.oauth2.core.OAuth2Token;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
-import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
-import org.springframework.security.oauth2.server.authorization.token.JwtGenerator;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.oauth2.server.authorization.token.*;
 import org.springframework.util.Assert;
 
 import java.io.*;
@@ -54,25 +52,34 @@ class KeyConfiguration {
     }
 
     @Bean
+    OAuth2TokenGenerator<OAuth2Token> delegatingOAuth2TokenGenerator(JwtEncoder encoder, OAuth2TokenCustomizer<JwtEncodingContext> customizer) {
+        var jg = this.jwtGenerator(encoder, customizer);
+        return new DelegatingOAuth2TokenGenerator(jg, new OAuth2AccessTokenGenerator(),
+                new OAuth2RefreshTokenGenerator());
+    }
+
     JwtGenerator jwtGenerator(JwtEncoder jwtEncoder, OAuth2TokenCustomizer<JwtEncodingContext> customizer) {
         var generator = new JwtGenerator(jwtEncoder);
         generator.setJwtCustomizer(customizer);
         return generator;
     }
 
+
+    /*
     @Bean
-    TextEncryptor textEncryptor(@Value("${jwk.persistence.password}") String password,
-                                @Value("${jwk.persistence.salt}") String salt) {
+    TextEncryptor textEncryptor(
+        @Value("${jwk.persistence.password}") String password,
+        @Value("${jwk.persistence.salt}") String salt) {
         return Encryptors.noOpText() ;///  Encryptors.text(password, salt);
     }
+    */
 
-    @Bean
-    JdbcRsaKeyPairRepository rsaKeyPairRepository(JdbcTemplate template) {
-        return new JdbcRsaKeyPairRepository(Encryptors.noOpText(),
-                template);
-    }
-
-
+    /*  @Bean
+      JdbcRsaKeyPairRepository rsaKeyPairRepository(JdbcTemplate template) {
+          return new JdbcRsaKeyPairRepository(Encryptors.noOpText(),
+                  template);
+      }
+  */
     KeyConfiguration(@Value("${jwk.key.id}") String keyId,
                      ApplicationEventPublisher publisher) {
         this.keyId = keyId;
@@ -101,6 +108,11 @@ class KeyConfiguration {
     }
 
     @Bean
+    InMemoryRsaKeyPairRepository inMemoryRsaKeyPairRepository() {
+        return new InMemoryRsaKeyPairRepository();
+    }
+
+    @Bean
     ApplicationListener<KeyPairGenerationRequestEvent> keyPairGenerationRequestListener(RsaKeyPairRepository repository) {
         return event -> repository.save(generateKeyPair(event.getSource()));
     }
@@ -116,7 +128,6 @@ class KeyConfiguration {
 
 
 class JdbcRsaKeyPairRepository implements RsaKeyPairRepository {
-
 
     private final JdbcTemplate template;
 
@@ -216,7 +227,7 @@ class JdbcRsaKeyPairRepository implements RsaKeyPairRepository {
     }
 }
 
-@Deprecated
+
 class InMemoryRsaKeyPairRepository implements RsaKeyPairRepository {
 
     private final Map<String, RsaKeyPair> idToKeyPair = new ConcurrentHashMap<>();
