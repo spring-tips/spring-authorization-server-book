@@ -11,28 +11,29 @@ import java.util.Date;
 @Component
 class RsaKeyPairRowMapper implements RowMapper<RsaKeyPairRepository.RsaKeyPair> {
 
-    private final RsaPrivateKeySerializer privateKeySerializer;
+    private final RsaPrivateKeyConverter rsaPrivateKeyConverter;
 
-    private final RsaPublicKeySerializer publicKeySerializer;
+    private final RsaPublicKeyConverter rsaPublicKeyConverter;
 
-    RsaKeyPairRowMapper(RsaPrivateKeySerializer privateKeySerializer, RsaPublicKeySerializer publicKeySerializer) {
-        this.privateKeySerializer = privateKeySerializer;
-        this.publicKeySerializer = publicKeySerializer;
+    RsaKeyPairRowMapper(RsaPrivateKeyConverter rsaPrivateKeyConverter,
+                        RsaPublicKeyConverter rsaPublicKeyConverter) {
+        this.rsaPrivateKeyConverter = rsaPrivateKeyConverter;
+        this.rsaPublicKeyConverter = rsaPublicKeyConverter;
     }
 
     @Override
     public RsaKeyPairRepository.RsaKeyPair mapRow(ResultSet rs, int rowNum) throws SQLException {
-
         try {
-            var privateKey = this.privateKeySerializer.deserializeFromByteArray(
-                    rs.getString("private_key").getBytes()
-            );
-            var publicKey = this.publicKeySerializer.deserializeFromByteArray(
-                    rs.getString("public_key").getBytes()
-            );
-            return new RsaKeyPairRepository.RsaKeyPair(rs.getString("id"),
-                    new Date(rs.getDate("created").getTime()).toInstant(),
-                    publicKey, privateKey);
+            var privateKeyBytes = rs.getString("private_key").getBytes();
+            var privateKey = this.rsaPrivateKeyConverter.deserializeFromByteArray(privateKeyBytes);
+
+            var publicKeyBytes = rs.getString("public_key").getBytes();
+            var publicKey = this.rsaPublicKeyConverter.deserializeFromByteArray(publicKeyBytes);
+
+            var created = new Date(rs.getDate("created").getTime()).toInstant();
+            var id = rs.getString("id");
+
+            return new RsaKeyPairRepository.RsaKeyPair(id, created, publicKey, privateKey);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -15,21 +15,21 @@ class JdbcRsaKeyPairRepository implements RsaKeyPairRepository {
 
     private final JdbcTemplate jdbc;
 
-    private final RsaPublicKeySerializer rsaPublicKeySerializer;
+    private final RsaPublicKeyConverter rsaPublicKeyConverter;
 
-    private final RsaPrivateKeySerializer rsaPrivateKeySerializer;
+    private final RsaPrivateKeyConverter rsaPrivateKeyConverter;
 
     private final RowMapper<RsaKeyPair> keyPairRowMapper;
 
     JdbcRsaKeyPairRepository(
             RowMapper<RsaKeyPair> keyPairRowMapper,
-            RsaPublicKeySerializer publicKeySerializer,
-            RsaPrivateKeySerializer privateKeySerializer,
+            RsaPublicKeyConverter publicKeySerializer,
+            RsaPrivateKeyConverter privateKeySerializer,
             JdbcTemplate jdbc) {
         this.jdbc = jdbc;
         this.keyPairRowMapper = keyPairRowMapper;
-        this.rsaPublicKeySerializer = publicKeySerializer;
-        this.rsaPrivateKeySerializer = privateKeySerializer;
+        this.rsaPublicKeyConverter = publicKeySerializer;
+        this.rsaPrivateKeyConverter = privateKeySerializer;
     }
 
     @Override
@@ -40,14 +40,12 @@ class JdbcRsaKeyPairRepository implements RsaKeyPairRepository {
     @Override
     public void save(RsaKeyPair keyPair) {
         var sql = """
-                INSERT INTO rsa_key_pairs (id, private_key, public_key, created)
-                VALUES (?, ?, ?, ?)
-                on conflict  on constraint rsa_key_pairs_id_created_key
-                do nothing
+                insert into rsa_key_pairs (id, private_key, public_key, created) values (?, ?, ?, ?)
+                on conflict on constraint rsa_key_pairs_id_created_key do nothing
                 """;
         try (var privateBaos = new ByteArrayOutputStream(); var publicBaos = new ByteArrayOutputStream()) {
-            this.rsaPrivateKeySerializer.serialize(keyPair.privateKey(), privateBaos);
-            this.rsaPublicKeySerializer.serialize(keyPair.publicKey(), publicBaos);
+            this.rsaPrivateKeyConverter.serialize(keyPair.privateKey(), privateBaos);
+            this.rsaPublicKeyConverter.serialize(keyPair.publicKey(), publicBaos);
             var updated = this.jdbc.update(sql, keyPair.id(), privateBaos.toString(), publicBaos.toString(), new Date(keyPair.created().toEpochMilli()));
             Assert.state(updated == 0 || updated == 1, "no more than one record should have been updated");
         }//

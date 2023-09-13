@@ -16,7 +16,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 @Component
-class RsaPublicKeySerializer implements Serializer<RSAPublicKey>, Deserializer<RSAPublicKey> {
+class RsaPublicKeyConverter implements Serializer<RSAPublicKey>, Deserializer<RSAPublicKey> {
 
     @Override
     public void serialize(RSAPublicKey object, OutputStream outputStream) throws IOException {

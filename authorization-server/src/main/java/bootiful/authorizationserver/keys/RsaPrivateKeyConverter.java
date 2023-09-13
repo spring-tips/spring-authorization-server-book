@@ -16,7 +16,7 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
 
 @Component
-class RsaPrivateKeySerializer implements Serializer<RSAPrivateKey>,
+class RsaPrivateKeyConverter implements Serializer<RSAPrivateKey>,
         Deserializer<RSAPrivateKey> {
 
     @Override
