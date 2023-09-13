@@ -21,9 +21,11 @@ class JdbcRsaKeyPairRepository implements RsaKeyPairRepository {
 
     private final RowMapper<RsaKeyPair> keyPairRowMapper;
 
-    JdbcRsaKeyPairRepository(RowMapper<RsaKeyPair> keyPairRowMapper,
-                             JdbcTemplate template, RsaPublicKeySerializer publicKeySerializer,
-                             RsaPrivateKeySerializer privateKeySerializer) {
+    JdbcRsaKeyPairRepository(
+            RowMapper<RsaKeyPair> keyPairRowMapper,
+            RsaPublicKeySerializer publicKeySerializer,
+            RsaPrivateKeySerializer privateKeySerializer,
+            JdbcTemplate template) {
         this.template = template;
         this.keyPairRowMapper = keyPairRowMapper;
         this.rsaPublicKeySerializer = publicKeySerializer;
