@@ -29,18 +29,6 @@ class KeyConfiguration {
         this.keyId = keyId;
     }
 
-    @Bean
-    NimbusJwtEncoder jwtEncoder(JWKSource<SecurityContext> jwkSource) {
-        return new NimbusJwtEncoder(jwkSource);
-    }
-
-    @Bean
-    OAuth2TokenGenerator<OAuth2Token> delegatingOAuth2TokenGenerator(JwtEncoder encoder, OAuth2TokenCustomizer<JwtEncodingContext> customizer) {
-        var generator = new JwtGenerator(encoder);
-        generator.setJwtCustomizer(customizer);
-        return new DelegatingOAuth2TokenGenerator(generator,
-                new OAuth2AccessTokenGenerator(), new OAuth2RefreshTokenGenerator());
-    }
 
     private RsaKeyPairRepository.RsaKeyPair generateKeyPair(Instant created) {
         var keyPair = generateRsaKey();
@@ -61,16 +49,31 @@ class KeyConfiguration {
     }
 
     @Bean
-    ApplicationListener<RsaKeyPairGenerationRequestEvent> keyPairGenerationRequestListener(RsaKeyPairRepository repository) {
+    ApplicationListener<RsaKeyPairGenerationRequestEvent> keyPairGenerationRequestListener(
+            RsaKeyPairRepository repository) {
         return event -> repository.save(generateKeyPair(event.getSource()));
     }
 
     @Bean
-    ApplicationListener<ApplicationReadyEvent> applicationReadyListener(ApplicationEventPublisher publisher, RsaKeyPairRepository repository) {
+    ApplicationListener<ApplicationReadyEvent> applicationReadyListener(
+            ApplicationEventPublisher publisher, RsaKeyPairRepository repository) {
         return event -> {
             if (repository.findKeyPairs().isEmpty())
                 publisher.publishEvent(new RsaKeyPairGenerationRequestEvent(Instant.now()));
         };
+    }
+
+    @Bean
+    NimbusJwtEncoder jwtEncoder(JWKSource<SecurityContext> jwkSource) {
+        return new NimbusJwtEncoder(jwkSource);
+    }
+
+    @Bean
+    OAuth2TokenGenerator<OAuth2Token> delegatingOAuth2TokenGenerator(JwtEncoder encoder, OAuth2TokenCustomizer<JwtEncodingContext> customizer) {
+        var generator = new JwtGenerator(encoder);
+        generator.setJwtCustomizer(customizer);
+        return new DelegatingOAuth2TokenGenerator(generator,
+                new OAuth2AccessTokenGenerator(), new OAuth2RefreshTokenGenerator());
     }
 }
 
