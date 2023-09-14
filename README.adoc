@@ -368,10 +368,6 @@ Backup your secrets, but ensure backups are also secured.
 No matter which approach you choose, it's essential to keep the principle of least privilege in mind.
 Only the necessary entities should have access to your secrets, and they should only be decrypted at the last possible moment (e.g., by the application when needed).
 
-
-//
-
-
 Also, we're going to need to encode passwords so that they're not lying around at rest in plain text.
 Define a bean of type `PasswordEncoder` for use in your program.
 
@@ -550,7 +546,7 @@ We'll use the properties when we define the `JwkSource<ServerContext>` bean.
 
 [source,java]
 ----
-include::authorization-server/src/main/java/bootiful/authorizationserver/KeyConfiguration.java[]
+include::authorization-server/snippets/SimpleKeyConfiguration.java[]
 ----
 
 In this example, I've kept the private key (`app.key`) in the source code of this repository, but as you can imagine, this is a **very bad** idea in production.
@@ -842,6 +838,11 @@ include::gateway/src/main/resources/application.properties[]
 <1> this process will run on port `8082`.
 <2> it will use the issuer URI to validate JWTs if it detects them
 <3> otherwise it will use this configuration to, acting as a client, inintiate an OIDC login to allow you to come up with a valid token.
+
+== The Processor
+
+// in this section we'll look at how to use OAuth to secure a headless backoffice process
+// the approach we'll take could be easily applied to other contexts, like Spring's WebSocket support using the `BeforeSocketHandshakeInterceptor`
 
 ==  Your First Cup of Java
 
