@@ -29,13 +29,13 @@ class KeyConfigurationTest {
 
     @Test
     void privateKeyPlain() throws Exception {
-        this.doPlainTest(this.keyPair.privateKey(), new RsaPrivateKeyConverter(),
+        this.doPlainTest(this.keyPair.privateKey(), new RsaPrivateKeyConverter(textEncryptor),
                 this::toString);
     }
 
     @Test
     void publicKeyPlain() throws Exception {
-        this.doPlainTest(this.keyPair.publicKey(), new RsaPublicKeyConverter(),
+        this.doPlainTest(this.keyPair.publicKey(), new RsaPublicKeyConverter(textEncryptor),
                 this::toString);
     }
 
@@ -52,7 +52,7 @@ class KeyConfigurationTest {
 
     private String toString(RSAPrivateKey privateKey) {
         try {
-            var converter = new RsaPrivateKeyConverter();
+            var converter = new RsaPrivateKeyConverter(textEncryptor);
             try (var baos = new ByteArrayOutputStream()) {
                 converter.serialize(privateKey, baos);
                 return baos.toString(this.charset);
@@ -65,7 +65,7 @@ class KeyConfigurationTest {
 
     private String toString(RSAPublicKey publicKey) {
         try {
-            var converter = new RsaPublicKeyConverter();
+            var converter = new RsaPublicKeyConverter(textEncryptor);
             try (var baos = new ByteArrayOutputStream()) {
                 converter.serialize(publicKey, baos);
                 return baos.toString(this.charset);

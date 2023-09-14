@@ -2,6 +2,7 @@ package bootiful.authorizationserver.keys;
 
 import org.springframework.core.serializer.Deserializer;
 import org.springframework.core.serializer.Serializer;
+import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.util.FileCopyUtils;
 
 import java.io.IOException;
@@ -17,11 +18,21 @@ import java.util.Base64;
 class RsaPrivateKeyConverter implements Serializer<RSAPrivateKey>,
         Deserializer<RSAPrivateKey> {
 
+    private final TextEncryptor textEncryptor;
+
+    RsaPrivateKeyConverter(TextEncryptor textEncryptor) {
+        this.textEncryptor = textEncryptor;
+    }
+
     @Override
     public RSAPrivateKey deserialize(InputStream inputStream) {
         try {
-            var pem = FileCopyUtils.copyToString(new InputStreamReader(inputStream));
-            var privateKeyPEM = pem.replace("-----BEGIN PRIVATE KEY-----", "").replace("-----END PRIVATE KEY-----", "");
+            var pem = this.textEncryptor.decrypt(
+                    FileCopyUtils.copyToString(new InputStreamReader(inputStream)));
+
+            var privateKeyPEM = pem
+                    .replace("-----BEGIN PRIVATE KEY-----", "")
+                    .replace("-----END PRIVATE KEY-----", "");
             var encoded = Base64.getMimeDecoder().decode(privateKeyPEM);
             var keyFactory = KeyFactory.getInstance("RSA");
             var keySpec = new PKCS8EncodedKeySpec(encoded);
@@ -35,6 +46,8 @@ class RsaPrivateKeyConverter implements Serializer<RSAPrivateKey>,
     @Override
     public void serialize(RSAPrivateKey object, OutputStream outputStream) throws IOException {
         var pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(object.getEncoded());
-        outputStream.write(("-----BEGIN PRIVATE KEY-----\n" + Base64.getMimeEncoder().encodeToString(pkcs8EncodedKeySpec.getEncoded()) + "\n-----END PRIVATE KEY-----").getBytes());
+        var string = "-----BEGIN PRIVATE KEY-----\n" + Base64.getMimeEncoder().encodeToString(pkcs8EncodedKeySpec.getEncoded())
+                     + "\n-----END PRIVATE KEY-----";
+        outputStream.write(this.textEncryptor.encrypt(string).getBytes());
     }
 }
