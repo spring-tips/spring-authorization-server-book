@@ -15,44 +15,16 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.token.*;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 
 
 @Configuration
 class KeyConfiguration {
 
-    private final String keyId;
-
-    KeyConfiguration(@Value("${jwk.key.id}") String keyId) {
-        this.keyId = keyId;
-    }
-
-    RsaKeyPairRepository.RsaKeyPair generateKeyPair(Instant created) {
-        var keyPair = generateRsaKey();
-        var publicKey = (RSAPublicKey) keyPair.getPublic();
-        var privateKey = (RSAPrivateKey) keyPair.getPrivate();
-        return new RsaKeyPairRepository.RsaKeyPair(this.keyId, created, publicKey, privateKey);
-    }
-
-    KeyPair generateRsaKey() {
-        try {
-            var keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-            keyPairGenerator.initialize(2048);
-            return keyPairGenerator.generateKeyPair();
-        }//
-        catch (Exception ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
     @Bean
     ApplicationListener<RsaKeyPairGenerationRequestEvent> keyPairGenerationRequestListener(
-            RsaKeyPairRepository repository) {
-        return event -> repository.save(generateKeyPair(event.getSource()));
+            Keys keys, RsaKeyPairRepository repository, @Value("${jwk.key.id}") String keyId) {
+        return event -> repository.save(keys.generateKeyPair(keyId, event.getSource()));
     }
 
     @Bean

@@ -29,7 +29,6 @@ class RsaPrivateKeyConverter implements Serializer<RSAPrivateKey>,
         try {
             var pem = this.textEncryptor.decrypt(
                     FileCopyUtils.copyToString(new InputStreamReader(inputStream)));
-
             var privateKeyPEM = pem
                     .replace("-----BEGIN PRIVATE KEY-----", "")
                     .replace("-----END PRIVATE KEY-----", "");
