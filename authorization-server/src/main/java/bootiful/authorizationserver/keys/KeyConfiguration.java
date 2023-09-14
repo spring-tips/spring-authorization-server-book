@@ -8,6 +8,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.encrypt.Encryptors;
+import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.security.oauth2.core.OAuth2Token;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
@@ -29,14 +31,14 @@ class KeyConfiguration {
         this.keyId = keyId;
     }
 
-    private RsaKeyPairRepository.RsaKeyPair generateKeyPair(Instant created) {
+    RsaKeyPairRepository.RsaKeyPair generateKeyPair(Instant created) {
         var keyPair = generateRsaKey();
         var publicKey = (RSAPublicKey) keyPair.getPublic();
         var privateKey = (RSAPrivateKey) keyPair.getPrivate();
         return new RsaKeyPairRepository.RsaKeyPair(this.keyId, created, publicKey, privateKey);
     }
 
-    private KeyPair generateRsaKey() {
+    KeyPair generateRsaKey() {
         try {
             var keyPairGenerator = KeyPairGenerator.getInstance("RSA");
             keyPairGenerator.initialize(2048);
@@ -51,6 +53,13 @@ class KeyConfiguration {
     ApplicationListener<RsaKeyPairGenerationRequestEvent> keyPairGenerationRequestListener(
             RsaKeyPairRepository repository) {
         return event -> repository.save(generateKeyPair(event.getSource()));
+    }
+
+    @Bean
+    TextEncryptor textEncryptor(
+            @Value("${jwk.persistence.password}") String pw,
+            @Value("${jwk.persistence.salt}") String salt) {
+        return Encryptors.text(pw, salt);
     }
 
     @Bean

@@ -2,20 +2,18 @@ package bootiful.authorizationserver.keys;
 
 import org.springframework.core.serializer.Deserializer;
 import org.springframework.core.serializer.Serializer;
-import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
 
-@Component
+
 class RsaPrivateKeyConverter implements Serializer<RSAPrivateKey>,
         Deserializer<RSAPrivateKey> {
 
@@ -37,6 +35,6 @@ class RsaPrivateKeyConverter implements Serializer<RSAPrivateKey>,
     @Override
     public void serialize(RSAPrivateKey object, OutputStream outputStream) throws IOException {
         var pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(object.getEncoded());
-        outputStream.write(("-----BEGIN PRIVATE KEY-----\n" + Base64.getMimeEncoder().encodeToString(pkcs8EncodedKeySpec.getEncoded()) + "\n-----END PRIVATE KEY-----").getBytes(StandardCharsets.UTF_8));
+        outputStream.write(("-----BEGIN PRIVATE KEY-----\n" + Base64.getMimeEncoder().encodeToString(pkcs8EncodedKeySpec.getEncoded()) + "\n-----END PRIVATE KEY-----").getBytes());
     }
 }

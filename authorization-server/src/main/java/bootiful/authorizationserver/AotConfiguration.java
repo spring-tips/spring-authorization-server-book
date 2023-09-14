@@ -148,12 +148,10 @@ class AotConfiguration {
             all.forEach(type -> {
                 var typeReference = TypeReference.of(type);
                 hints.reflection().registerType(typeReference, memberCategories);
-                System.out.println("registering " + type);
                 try {
                     var clzz = Class.forName(typeReference.getName());
                     if (Serializable.class.isAssignableFrom(clzz)) {
                         hints.serialization().registerType(typeReference);
-                        System.out.println("registering serialization hint for " + typeReference.getName() + '.');
                     }
                 } //
                 catch (Throwable t) {
