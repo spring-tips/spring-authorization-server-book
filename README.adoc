@@ -617,7 +617,7 @@ And an HTTP controller that will return all that customer data...
 include::api/src/main/java/bootiful/api/CustomerHttpController.java[]
 -----
 
-Remember we're going to be securing this with Spring Security's OAuth support, and just to be sure everything's worked, we'll have a simple HTTP endpoint that injects and then spits out the current authenticated user's username (so you can see who the system thinks is authenticated at the moment).
+Remember we're going to be securing this with Spring Security's OAuth support, and just to be sure everything's worked, we'll have a simple HTTP endpoint that injects and then spits out the current authenticated user's username, (so you can see who the system thinks is authenticated at the moment).
 
 [source,java]
 -----

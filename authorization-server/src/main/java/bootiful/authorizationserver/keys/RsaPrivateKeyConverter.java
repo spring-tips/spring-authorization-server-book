@@ -20,8 +20,7 @@ class RsaPrivateKeyConverter implements Serializer<RSAPrivateKey>,
         Deserializer<RSAPrivateKey> {
 
     @Override
-    public RSAPrivateKey deserialize(InputStream inputStream) throws IOException {
-
+    public RSAPrivateKey deserialize(InputStream inputStream) {
         try {
             var pem = FileCopyUtils.copyToString(new InputStreamReader(inputStream));
             var privateKeyPEM = pem.replace("-----BEGIN PRIVATE KEY-----", "").replace("-----END PRIVATE KEY-----", "");

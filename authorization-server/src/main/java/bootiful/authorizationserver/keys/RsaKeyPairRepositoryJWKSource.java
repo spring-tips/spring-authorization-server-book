@@ -41,6 +41,4 @@ class RsaKeyPairRepositoryJWKSource implements JWKSource<SecurityContext>, OAuth
         var kid = keyPairs.get(0).id();
         context.getJwsHeader().keyId(kid);
     }
-
-
 }

@@ -29,7 +29,6 @@ class KeyConfiguration {
         this.keyId = keyId;
     }
 
-
     private RsaKeyPairRepository.RsaKeyPair generateKeyPair(Instant created) {
         var keyPair = generateRsaKey();
         var publicKey = (RSAPublicKey) keyPair.getPublic();

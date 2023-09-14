@@ -6,7 +6,7 @@ import java.time.Instant;
 
 class RsaKeyPairGenerationRequestEvent extends ApplicationEvent {
 
-    public RsaKeyPairGenerationRequestEvent(Instant instant) {
+    RsaKeyPairGenerationRequestEvent(Instant instant) {
         super(instant);
     }
 
