@@ -11,11 +11,11 @@ import java.time.Instant;
 @Component
 class Keys {
 
-    RsaKeyPairRepository.RsaKeyPair generateKeyPair(String keyId, Instant created) {
+    RsaKeyPair generateKeyPair(String keyId, Instant created) {
         var keyPair = generateRsaKey();
         var publicKey = (RSAPublicKey) keyPair.getPublic();
         var privateKey = (RSAPrivateKey) keyPair.getPrivate();
-        return new RsaKeyPairRepository.RsaKeyPair(keyId, created, publicKey, privateKey);
+        return new RsaKeyPair(keyId, created, publicKey, privateKey);
     }
 
     private KeyPair generateRsaKey() {
