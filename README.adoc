@@ -752,7 +752,7 @@ include::authorization-server/src/main/java/bootiful/authorizationserver/keys/Li
 <.> this `ApplicationListener` listens for the aforementioned event and writes a new `RsaKeyPair` to the repository, using the injeted `jwk.key.id`, whcih should be specified externally, and should remain constant. that is, after all, the key ID.
 <.> this `ApplicationListener` runs when the service starts and publishes a `RsaKeyPairGenerationRequestEvent`, but only if there are no `RsaKeyPairs` in teh repository already.
 
-At this point you can delete the key files we generated with `openssl` earlier. You can also delete the relevant configration in your `application.properties` or `application.yml`; the application can now create its own keys.
+At this point you can delete the key files we generated with `openssl` earlier. You can also delete the relevant configration in your `application.properties` or `application.yml`; the application can now create and rotate its own keys.
 
 === To Production... and Beyond!
 
