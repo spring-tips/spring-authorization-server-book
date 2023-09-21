@@ -754,6 +754,12 @@ include::authorization-server/src/main/java/bootiful/authorizationserver/keys/Li
 
 At this point you can delete the key files we generated with `openssl` earlier. You can also delete the relevant configration in your `application.properties` or `application.yml`; the application can now create and rotate its own keys.
 
+
+// == Federated OAuth
+// todo
+// see the example that shows how to use SAS as a federated OAuth service, so then when you authenticate with SAS, you can also authenticate with Google or Github or whatever
+// https://github.com/spring-projects/spring-authorization-server/tree/main/samples/demo-authorizationserver/src/main/java/sample/federation
+
 === To Production... and Beyond!
 
 And that's it!
