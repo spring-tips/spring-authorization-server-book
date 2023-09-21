@@ -14,7 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-class RsaKeyPairRepositoryJWKSource implements JWKSource<SecurityContext>, OAuth2TokenCustomizer<JwtEncodingContext> {
+class RsaKeyPairRepositoryJWKSource implements JWKSource<SecurityContext>,
+        OAuth2TokenCustomizer<JwtEncodingContext> {
 
     private final RsaKeyPairRepository keyPairRepository;
 
@@ -22,12 +23,15 @@ class RsaKeyPairRepositoryJWKSource implements JWKSource<SecurityContext>, OAuth
         this.keyPairRepository = keyPairRepository;
     }
 
+    // <.>
     @Override
     public List<JWK> get(JWKSelector jwkSelector, SecurityContext context) throws KeySourceException {
         var keyPairs = this.keyPairRepository.findKeyPairs();
         var result = new ArrayList<JWK>(keyPairs.size());
         for (var keyPair : keyPairs) {
-            var rsaKey = new RSAKey.Builder(keyPair.publicKey()).privateKey(keyPair.privateKey()).keyID(keyPair.id()).build();
+            var rsaKey = new RSAKey.Builder(
+                    keyPair.publicKey()).privateKey(keyPair.privateKey())
+                    .keyID(keyPair.id()).build();
             if (jwkSelector.getMatcher().matches(rsaKey)) {
                 result.add(rsaKey);
             }
@@ -35,6 +39,7 @@ class RsaKeyPairRepositoryJWKSource implements JWKSource<SecurityContext>, OAuth
         return result;
     }
 
+    // <.>
     @Override
     public void customize(JwtEncodingContext context) {
         var keyPairs = this.keyPairRepository.findKeyPairs();

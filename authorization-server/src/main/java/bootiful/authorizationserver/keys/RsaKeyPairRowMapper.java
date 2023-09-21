@@ -1,5 +1,6 @@
 package bootiful.authorizationserver.keys;
 
+import org.springframework.core.serializer.Deserializer;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 
@@ -9,7 +10,7 @@ import java.sql.SQLException;
 import java.util.Date;
 
 @Component
-class RsaKeyPairRowMapper implements RowMapper<RsaKeyPairRepository.RsaKeyPair> {
+class RsaKeyPairRowMapper implements RowMapper<RsaKeyPair> {
 
     private final RsaPrivateKeyConverter rsaPrivateKeyConverter;
 
@@ -22,20 +23,27 @@ class RsaKeyPairRowMapper implements RowMapper<RsaKeyPairRepository.RsaKeyPair> 
     }
 
     @Override
-    public RsaKeyPairRepository.RsaKeyPair mapRow(ResultSet rs, int rowNum) throws SQLException {
+    public RsaKeyPair mapRow(ResultSet rs, int rowNum) throws SQLException {
         try {
-            var privateKeyBytes = rs.getString("private_key").getBytes();
-            var privateKey = this.rsaPrivateKeyConverter.deserializeFromByteArray(privateKeyBytes);
 
-            var publicKeyBytes = rs.getString("public_key").getBytes();
-            var publicKey = this.rsaPublicKeyConverter.deserializeFromByteArray(publicKeyBytes);
+            // <.>
+            var privateKey = loadKey(rs, "private_key", this.rsaPrivateKeyConverter);
+            var publicKey = loadKey(rs, "public_key", this.rsaPublicKeyConverter);
 
+            // <.>
             var created = new Date(rs.getDate("created").getTime()).toInstant();
             var id = rs.getString("id");
 
-            return new RsaKeyPairRepository.RsaKeyPair(id, created, publicKey, privateKey);
+            // <.>
+            return new RsaKeyPair(id, created, publicKey, privateKey);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static <T> T loadKey(ResultSet rs, String fn, Deserializer<T> f)
+            throws SQLException, IOException {
+        var privateKeyBytes = rs.getString(fn).getBytes();
+        return f.deserializeFromByteArray(privateKeyBytes);
     }
 }

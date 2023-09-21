@@ -24,6 +24,16 @@ class RsaPrivateKeyConverter implements Serializer<RSAPrivateKey>,
         this.textEncryptor = textEncryptor;
     }
 
+    // <1>
+    @Override
+    public void serialize(RSAPrivateKey object, OutputStream outputStream) throws IOException {
+        var pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(object.getEncoded());
+        var string = "-----BEGIN PRIVATE KEY-----\n" + Base64.getMimeEncoder().encodeToString(pkcs8EncodedKeySpec.getEncoded())
+                     + "\n-----END PRIVATE KEY-----";
+        outputStream.write(this.textEncryptor.encrypt(string).getBytes());
+    }
+
+    // <2>
     @Override
     public RSAPrivateKey deserialize(InputStream inputStream) {
         try {
@@ -42,11 +52,5 @@ class RsaPrivateKeyConverter implements Serializer<RSAPrivateKey>,
         }
     }
 
-    @Override
-    public void serialize(RSAPrivateKey object, OutputStream outputStream) throws IOException {
-        var pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(object.getEncoded());
-        var string = "-----BEGIN PRIVATE KEY-----\n" + Base64.getMimeEncoder().encodeToString(pkcs8EncodedKeySpec.getEncoded())
-                     + "\n-----END PRIVATE KEY-----";
-        outputStream.write(this.textEncryptor.encrypt(string).getBytes());
-    }
+
 }

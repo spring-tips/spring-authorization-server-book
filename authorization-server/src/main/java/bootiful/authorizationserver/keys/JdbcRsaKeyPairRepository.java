@@ -23,31 +23,44 @@ class JdbcRsaKeyPairRepository implements RsaKeyPairRepository {
 
     JdbcRsaKeyPairRepository(
             RowMapper<RsaKeyPair> keyPairRowMapper,
-            RsaPublicKeyConverter publicKeySerializer,
-            RsaPrivateKeyConverter privateKeySerializer,
+            RsaPublicKeyConverter publicConverter,
+            RsaPrivateKeyConverter privateConverter,
             JdbcTemplate jdbc) {
         this.jdbc = jdbc;
         this.keyPairRowMapper = keyPairRowMapper;
-        this.rsaPublicKeyConverter = publicKeySerializer;
-        this.rsaPrivateKeyConverter = privateKeySerializer;
+        this.rsaPublicKeyConverter = publicConverter;
+        this.rsaPrivateKeyConverter = privateConverter;
     }
 
+    // <.>
     @Override
     public List<RsaKeyPair> findKeyPairs() {
-        return this.jdbc.query("select * from rsa_key_pairs order by created desc", this.keyPairRowMapper);
+        return this.jdbc.query(
+                "select * from rsa_key_pairs order by created desc",
+                this.keyPairRowMapper);
     }
 
+    // <.>
     @Override
     public void save(RsaKeyPair keyPair) {
         var sql = """
-                insert into rsa_key_pairs (id, private_key, public_key, created) values (?, ?, ?, ?)
-                on conflict on constraint rsa_key_pairs_id_created_key do nothing
+                insert into rsa_key_pairs (id, private_key, public_key, created) 
+                values (?, ?, ?, ?)
+                on conflict on constraint rsa_key_pairs_id_created_key 
+                do nothing
                 """;
-        try (var privateBaos = new ByteArrayOutputStream(); var publicBaos = new ByteArrayOutputStream()) {
+        try (var privateBaos = new ByteArrayOutputStream();
+             var publicBaos = new ByteArrayOutputStream()) {
             this.rsaPrivateKeyConverter.serialize(keyPair.privateKey(), privateBaos);
             this.rsaPublicKeyConverter.serialize(keyPair.publicKey(), publicBaos);
-            var updated = this.jdbc.update(sql, keyPair.id(), privateBaos.toString(), publicBaos.toString(), new Date(keyPair.created().toEpochMilli()));
-            Assert.state(updated == 0 || updated == 1, "no more than one record should have been updated");
+            var updated = this.jdbc.update(sql,
+                    keyPair.id(),
+                    privateBaos.toString(),
+                    publicBaos.toString(),
+                    new Date(keyPair.created().toEpochMilli())
+            );
+            Assert.state(updated == 0 || updated == 1,
+                "no more than one record should have been updated");
         }//
         catch (IOException e) {
             throw new IllegalArgumentException("there's been an exception", e);

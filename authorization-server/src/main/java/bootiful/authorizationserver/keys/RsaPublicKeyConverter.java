@@ -14,7 +14,8 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
-class RsaPublicKeyConverter implements Serializer<RSAPublicKey>, Deserializer<RSAPublicKey> {
+class RsaPublicKeyConverter implements Serializer<RSAPublicKey>,
+        Deserializer<RSAPublicKey> {
 
     private final TextEncryptor textEncryptor;
 
@@ -25,7 +26,8 @@ class RsaPublicKeyConverter implements Serializer<RSAPublicKey>, Deserializer<RS
     @Override
     public RSAPublicKey deserialize(InputStream inputStream) throws IOException {
         try {
-            var pem = textEncryptor.decrypt(FileCopyUtils.copyToString(new InputStreamReader(inputStream)));
+            var pem = textEncryptor.decrypt(
+                    FileCopyUtils.copyToString(new InputStreamReader(inputStream)));
             var publicKeyPEM = pem
                     .replace("-----BEGIN PUBLIC KEY-----", "")
                     .replace("-----END PUBLIC KEY-----", "");
