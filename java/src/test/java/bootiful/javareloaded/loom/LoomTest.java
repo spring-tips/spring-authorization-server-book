@@ -28,8 +28,9 @@ class LoomTest {
                 .toList();
 
         for (var t : threads) t.start(); // <3>
+
         for (var t : threads) t.join(); // <4>
-        System.out.println(observed);
+
         Assertions.assertTrue(observed.size() > 1); // <5>
     }
 
@@ -48,58 +49,4 @@ class LoomTest {
     static private Set<String> carefulAdd(String... args) {
         return new HashSet<>(Arrays.asList(args));
     }
-
-  /*  @EnableAutoConfiguration
-    @Configuration
-    static class LoomApp {
-
-        @Bean
-        RouterFunction<ServerResponse> http() throws JsonProcessingException {
-            var json = new ObjectMapper()
-                    .writeValueAsString(Map.of("message", "Hello, world!"));
-            return RouterFunctions
-                    .route()
-                    .GET("/hello", request -> ServerResponse.ok().body(json))
-                    .build();
-        }
-
-        @Bean
-        RestTemplate restTemplate(RestTemplateBuilder builder) {
-            return builder.build();
-        }
-
-        static Runnable request(RestTemplate template, CountDownLatch countDownLatch, int count) {
-            return () -> {
-                var re = template.getForEntity("http://localhost:8080/hello", String.class);
-                countDownLatch.countDown();
-                Assertions.assertTrue(re.getStatusCode().is2xxSuccessful(), "the result for [" + count + "] should be 200");
-            };
-        }
-
-        @Bean
-        ApplicationRunner runner(RestTemplate template) {
-            return args -> {
-                var service = Executors.newVirtualThreadPerTaskExecutor();
-                var count = 1_000;
-                var countDownLatch = new CountDownLatch(count);
-                for (var i = 0; i < count; i++)
-                    service.submit(request(template, countDownLatch, i));
-                Assertions.assertTrue(countDownLatch.await(1, TimeUnit.MINUTES));
-                System.out.println("finished the test...");
-            };
-        }
-    }
-
-    @Test
-    void tomcat() throws Exception {
-
-        var sa = new SpringApplicationBuilder()
-                .sources(LoomApp.class)
-                .properties(Map.of("spring.threads.virtual.enabled", true))
-                .run();
-
-
-    }*/
-
-
 }
