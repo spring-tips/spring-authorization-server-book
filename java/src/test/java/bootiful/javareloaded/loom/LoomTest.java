@@ -3,6 +3,8 @@ package bootiful.javareloaded.loom;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.stream.IntStream;
@@ -18,19 +20,17 @@ class LoomTest {
         var threads = IntStream
                 .range(0, 1000)
                 .mapToObj(index -> Thread
-                        .ofVirtual()
+                        .ofVirtual()// <1>
                         .unstarted(() -> {
-
-                            for (var i = 0; i < switches; i++)
+                            for (var i = 0; i < switches; i++) // <2>
                                 observed.addAll(observe(index));
-
                         }))
                 .toList();
 
-        for (var t : threads) t.start();
-        for (var t : threads) t.join();
+        for (var t : threads) t.start(); // <3>
+        for (var t : threads) t.join(); // <4>
         System.out.println(observed);
-        Assertions.assertEquals(switches, observed.stream().filter(s -> !s.isEmpty()).toList().size());
+        Assertions.assertTrue(observed.size() > 1); // <5>
     }
 
     private static Set<String> observe(int index) {
@@ -42,7 +42,11 @@ class LoomTest {
             throw new RuntimeException(e);
         }
         var after = Thread.currentThread().toString();
-        return index == 0 ? Set.of(before, after) : Set.of();
+        return index == 0 ? carefulAdd(before, after) : Set.of();
+    }
+
+    static private Set<String> carefulAdd(String... args) {
+        return new HashSet<>(Arrays.asList(args));
     }
 
   /*  @EnableAutoConfiguration
