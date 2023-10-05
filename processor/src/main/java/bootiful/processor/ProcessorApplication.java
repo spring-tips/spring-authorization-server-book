@@ -5,6 +5,7 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.amqp.dsl.Amqp;
@@ -42,6 +43,8 @@ public class ProcessorApplication {
     public static final String AUTHORIZATION_HEADER_NAME = "jwt";
 
 }
+
+
 
 
 @Configuration
@@ -132,9 +135,11 @@ class JwtAuthenticationInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         var token = (String) message.getHeaders().get(headerName);
         Assert.hasText(token, "the token must be non-empty!");
-        var authentication = this.authenticationProvider.authenticate(new BearerTokenAuthenticationToken(token));
+        var authentication = this.authenticationProvider
+                .authenticate(new BearerTokenAuthenticationToken(token));
         if (authentication != null && authentication.isAuthenticated()) {
-            var upt = UsernamePasswordAuthenticationToken.authenticated(authentication.getName(),
+            var upt =
+                    UsernamePasswordAuthenticationToken.authenticated(authentication.getName(),
                     null, AuthorityUtils.NO_AUTHORITIES);
             return MessageBuilder
                     .fromMessage(message)
