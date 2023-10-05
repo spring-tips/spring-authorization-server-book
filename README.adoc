@@ -1050,12 +1050,10 @@ include::gateway/src/main/resources/application.properties[]
 
 ==  Your First Cup of Java
 
-"WARNING: Spoilers ahead!" That is what I think every chapter or indeed every bit of informative text should say upfront because, by its very nature, the new knowledge and insight gained from such a chapter spells out the nuances of the unknown topic that it treats.
-But, unfortunately, most texts forego that friendly warning.
-Well, I didn't: there are _spoilers_ ahead!
+Are you using the latest version of Java yet? No? That's a real pity, because it's basically a different language from the one you might've known. This book was written with Java 21 in mind, but you should be using whatever the latest-and-greatest version of Java available to you is.
 
-Some of you will probably appreciate the warning.
-Because some of you have not upgraded to Java 11, let alone Java 17. I can only assume you are saving the surprise for some special day, years in the future?
+That said, i can appreciate that some of you may not have seen all that is new and nifty in the latest and greatest installments of Java, so we'll review some of my favorite features here. If you're all caught up, then please move on to the next chapters - there's entirely too much to look at, anyway.
+
 I don't know what the reason is, but I hope you're able to move up and over soon because Spring Framework 6 and Spring Boot 3 assume a Java 17 baseline.
 That means that not only do those generations of Spring support Java 17 features (as did the Spring Framework 5 and Spring Boot generations), they also use some Java 17 features in their source code.
 This book doesn't use Spring Framework 6 and Spring Boot 3 yet, but it will assume a Java 17 baseline for the code herein.

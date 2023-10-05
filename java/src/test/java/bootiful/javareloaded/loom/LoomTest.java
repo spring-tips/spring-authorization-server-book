@@ -1,28 +1,51 @@
 package bootiful.javareloaded.loom;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.servlet.function.RouterFunction;
-import org.springframework.web.servlet.function.RouterFunctions;
-import org.springframework.web.servlet.function.ServerResponse;
 
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.stream.IntStream;
 
 class LoomTest {
 
-    @EnableAutoConfiguration
+    private static Set<String> observe(int index) {
+        var before = Thread.currentThread().toString();
+        try {
+            Thread.sleep(100);
+        }//
+        catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        var after = Thread.currentThread().toString();
+        return index == 0 ? Set.of(before, after) : Set.of();
+    }
+
+    @Test
+    void threads() throws Exception {
+
+        var switches = 5;
+        var observed = new ConcurrentSkipListSet<String>();
+
+        var threads = IntStream
+                .range(0, 1000)
+                .mapToObj(index -> Thread
+                        .ofVirtual()
+                        .unstarted(() -> {
+
+                            for (var i = 0; i < switches; i++)
+                                observed.addAll(observe(index));
+
+                        }))
+                .toList();
+
+        for (var t : threads) t.start();
+        for (var t : threads) t.join();
+        System.out.println(observed);
+        Assertions.assertEquals(switches, observed.stream().filter(s -> !s.isEmpty()).toList().size());
+    }
+
+  /*  @EnableAutoConfiguration
     @Configuration
     static class LoomApp {
 
@@ -72,7 +95,7 @@ class LoomTest {
                 .run();
 
 
-    }
+    }*/
 
 
 }
