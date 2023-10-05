@@ -9,18 +9,6 @@ import java.util.stream.IntStream;
 
 class LoomTest {
 
-    private static Set<String> observe(int index) {
-        var before = Thread.currentThread().toString();
-        try {
-            Thread.sleep(100);
-        }//
-        catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        var after = Thread.currentThread().toString();
-        return index == 0 ? Set.of(before, after) : Set.of();
-    }
-
     @Test
     void threads() throws Exception {
 
@@ -43,6 +31,18 @@ class LoomTest {
         for (var t : threads) t.join();
         System.out.println(observed);
         Assertions.assertEquals(switches, observed.stream().filter(s -> !s.isEmpty()).toList().size());
+    }
+
+    private static Set<String> observe(int index) {
+        var before = Thread.currentThread().toString();
+        try {
+            Thread.sleep(100);
+        }//
+        catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        var after = Thread.currentThread().toString();
+        return index == 0 ? Set.of(before, after) : Set.of();
     }
 
   /*  @EnableAutoConfiguration
