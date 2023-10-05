@@ -18,20 +18,20 @@ class LoomTest {
         var observed = new ConcurrentSkipListSet<String>();
 
         var threads = IntStream
-                .range(0, 1000)
+                .range(0, 1000)// <.>
                 .mapToObj(index -> Thread
-                        .ofVirtual()// <1>
+                        .ofVirtual()// <.>
                         .unstarted(() -> {
-                            for (var i = 0; i < switches; i++) // <2>
+                            for (var i = 0; i < switches; i++) // <.>
                                 observed.addAll(observe(index));
                         }))
                 .toList();
 
-        for (var t : threads) t.start(); // <3>
+        for (var t : threads) t.start();
 
-        for (var t : threads) t.join(); // <4>
+        for (var t : threads) t.join();
 
-        Assertions.assertTrue(observed.size() > 1); // <5>
+        Assertions.assertTrue(observed.size() > 1); // <.>
     }
 
     private static Set<String> observe(int index) {

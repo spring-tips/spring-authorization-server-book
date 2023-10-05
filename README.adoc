@@ -1476,12 +1476,24 @@ If you're not used to it, it can be a bit daunting, too.
 Wouldn't it be nice if you could just take that existing code, as demonstrated above, and have it do the right thing, transparently moving the flow of execution off the thread when there's nothing happening, and then resuming the flow of execution when there is?
 This way, we could keep our relatively simpler code, and get the benefits of non-blocking IO.
 Absolutely it would.
-That's the promise of Project Loom and its new _virtual threads_.
-It's easy enough to change the code above to use these new _virtual threads_, too:
-`ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor())`, and it just works!
+And now you can. Project Loom is straightforward at the high levels: if you run your code in a _virtual thread_ (just another type of `java.lang.Thread`), then the runtime will detect _blocking_ operations like `InputStream#read()`, `Thread.sleep(long)`, etc., and automatically move the code off the thread its on if it's in a state where nothing is happening. It'll move the code back on to the thread once there's something to be, once the blocking operation has stopped blocking. In the case of reading, that means it'll resume once there are bytes to read. In the case of `Thread.sleep`, it'll resume once the sleep time has elapsed. And you don't have to do anything to get it to work. Let's look at an example that I shamelessly stole from Oracle Java advocate José Paumard.
 
-Why do I mention project Loom?
-Well, the Spring Authorization Server is built on blocking technologies like JDBC and the Servlet abstraction, but if you run them on Project Loom, with Spring Boot 3.2's virtual threads support enabled, you'll get to have your cake and eat it too: scalable, but simpler, code.
+[source,java]
+----
+include::java/src/test/java/bootiful/javareloaded/loom/LoomTest.java[]
+----
+<.> this program launches a 1000 virtual threads (very important!)
+<.> and during the execution of each thread, it sleeps five times, for about 100 milliseconds, each. This is not a long time, but it's enough that it forces the runtime to have to interleave, to _share_, the actual operating system threads.
+<.> it calls this method, `observe`, which notes the thread, sleeps, and then notes the thread again. If we're on the first thread, whose index would be `0`, then we retain that information.
+<.> by the end of the run, we've captured the thread on which our first of a thousand threads executed and stored them in a `Set<String>`, where the values will be deduplicated. Interestingly, there is probably more than one value in the set!  Remember, we only noted the thread of execution for _one_ thread - the _same_ thread! - and somehow - without us asking or doing anything, it got moved around. Print the values out, and you'll see the code ran on the same  _virtual_ thread, but on multiple carrier threads.
+
+The result is that while we were `Thread.sleep`-ing, the carrier thread  on which we were executing was made available to whatever else required it in the JVM. This efficient time-sharing means that now we can handle a _lot_ more requests with the same codebase. All we had to do was make sure to run the code on a _virtual_ thread.
+
+You don't have to use the `Thread.ofVirtual()` construction, either. There's an `Executor` implementation, too: `Executors.newVirtualThreadPerTaskExecutor()`. It's not a pool, however. Threads are no longer expensive, after all.
+
+That's easy enough. In a typical Spring Boot application, however, there are countless places where you'll need to override the default configured `Executor`, but in Spring Boot 3.2 we can do that for you. Specify `spring.threads.virtual.enabled=true` and you're all set.
+
+Loom is especially important in the context of the Spring Authorization Server, because it uses traditional blocking IO. If you want to easily scale it up, consider using virtual threads and Java 21 when running the Spring Authorization Server. Who knows, you may not need to add new instances. You'll get to have your cake and eat it too: scalable, but simpler, code.
 
 === Next Steps
 
