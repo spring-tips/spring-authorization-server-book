@@ -13,12 +13,9 @@ First, go to the https://start.spring.io[Spring Initializr], and then add the fo
 
 I gave the newly minted project a group of `bootiful` and named it `api`.
 
-I'm using Maven for my examples because, at the time of writing, the Gradle support for Java 21 was yet not great. You'll probably get a Gradle-based build by default, and that'll work just fine. Probably.
-
 Click `Generate`, unzip the newly minted `.zip` file, and then open the project in your IDE.
 
-The domain's a trivial one: customer data, like a CRM.
-Each `Customer` entity has an `id` field, a `name` field, and an `email`.
+The domain's a trivial one: customer data, like a CRM (customer relationship manager). Each `Customer` entity has an `id` field, a `name` field, and an `email`.
 
 [source,java]
 -----
@@ -46,14 +43,16 @@ Let's insert some `customer` records, just for good measure, so that we have som
 include::api/src/main/resources/data.sql[]
 -----
 
-And an HTTP controller that will return all that customer data...
+And if we write data in a database but have no HTTP controller by which to examine the data, did we actually write any data at all? Philosophers disagree, but just to be safe let's build an HTTP controller with good ol' Spring MVC.
 
 [source,java]
 -----
 include::api/src/main/java/bootiful/api/CustomerHttpController.java[]
 -----
 
-Remember we're going to be securing this with Spring Security's OAuth support, and just to be sure everything's worked, we'll have a simple HTTP endpoint that injects and then spits out the current authenticated user's username, (so you can see who the system thinks is authenticated at the moment).
+Remember we're going to be securing this with Spring Security's OAuth support, and just to be sure everything's worked, we'll have a simple HTTP endpoint that injects and then spits out the current authenticated user's username, so you can see who the system thinks is authenticated at the moment.
+
+This is particularly useful in the client, which is goign to want to at least acknowldge that the user has successfully authenticated with a message like, `Welcome <USER>`, where `<USER>` might be `jlong`. You might also leak other inforamation to the client, like the first name and last name.
 
 [source,java]
 -----
@@ -62,19 +61,20 @@ include::api/src/main/java/bootiful/api/MeHttpController.java[]
 
 And, finally, we've got a little integration that sends a message using the AMQP protocol via RabbitMQ to another service called `processor`.
 We'll introduce that thing later.
-The idea is that you'll be able to click a button to get some sort of email sent to each user.
-I haven't really thought out what sort of email.
+The idea is that you'll be able to click a button to get some sort of email sent to each user. We're not going to actually send an email.
+I haven't really thought out what sort of email we would send if we were!
 Just use your imagination.
-Sending email is one of those things you don't necessarily want to do in the hot path of handling HTTP requests.
-It takes a while, is prone to failing for no good reason, etc.
-It's one of those things that might also scale independently of the HTTP API itself, so we've put it on the other end of a message queue.
+
+The significant bit here is that sending email is one of those things you don't necessarily want to do in the hot path of handling HTTP requests. It should be farmed out to another node in the system which can be dedicated to scaling up and down as is required to handle the email-sending load, and to scale independently of the front-office HTTP traffic load.
+Sending email may  take a while, be error-prone, etc. It's the kind of dirty integration stuff that Spring Integration is purpose built for. So we'll use Spring Integration.
+
 
 TIP: This is what we used to call a backoffice process.
 I'm calling it `processor`, because I'm amazing with names, like everyone on the Spring team is.
-We named our MVC framework Spring MVC, our data framework Spring Data, our Batch framework Spring Batch.. well, you get the idea.
+We named our MVC framework Spring MVC, our data framework Spring Data, our batch framework Spring Batch... Well, you get the idea.
 (Don't ask about Spring Boot, tho!)
 
-Requests originate here in this controller.
+Requests originate here, in this controller.
 Each request contains a `Customer` payload, and header, `jwt`, which contains the JWT associated with the current authenticated user.
 We'll use that JWT later to validate the request is from a trusted, authenticated, user.
 
@@ -107,12 +107,13 @@ The Spring Security Resource Server support, the Spring Data support, the Spring
 ----
 include::api/src/main/resources/application.properties[]
 ----
-
 <1> the issuer URI is the address of the Spring Authorization Server against which Spring Security can validate a JWT token
 <2> we need to connect to the RabbitMQ instance..
 <3> and the PostgresSQL database...
 <4> the Spring Authorization Server is already running on port `8080`, so we'll need to run this Java application on port `8081`.
 (Remember that!)
+
+WARNING: I've hardcoded database connectivity credentials and RabbitMQ credentials and so on. It's worth restating: don't do this in a production application. Use environment variables or the Spring Cloud Config Server or Spring Cloud Vault or any of the infinitely more secure approaches than hardcoding credentials in plaintext on a public Git repository!
 
 With all that in place, you should be able to start the application.
 It's got a REST endpoint.

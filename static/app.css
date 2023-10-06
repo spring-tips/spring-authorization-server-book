@@ -1,0 +1,22 @@
+.id {
+    font-weight: bold;
+}
+
+.fade {
+    background-color: green;
+    animation: fade 2s ease forwards;
+}
+
+@keyframes fade {
+    to {
+        background-color: #fff;
+    }
+}
+
+.id {
+    display: inline-block; width: 2em; text-align: center;
+}
+
+html {
+    line-height: 1.5em;
+}

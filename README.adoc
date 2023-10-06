@@ -21,19 +21,25 @@ endif::[]
 :pdf-style: screen
 :leveloffset: 1
 // ifndef::ebook-format[:leveloffset: 1]
-
 toc::[]
-
 :sectnums!:
-
+[frontmatter]
+= Frontmatter
 
 include::frontmatter.adoc[]
+
+= The Spring Authorization Server
+
 include::authorization-server.adoc[]
 include::persistence.adoc[]
+
+= OAuth all the Things
+
 include::api.adoc[]
 include::gateway.adoc[]
 include::processor.adoc[]
 
 [appendix]
 = Appendix
+
 include::java.adoc[]

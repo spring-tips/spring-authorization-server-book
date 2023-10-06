@@ -6,7 +6,7 @@ When visitors to our site punch in the domain name for our system into a browser
 This service is also a gateway, powered by Spring Cloud Gateway.
 The gateway acts as a proxy, allowing us to forward requests to different hosts and ports, concealing from the user that the responses they're seeing are from different services.
 
-The `gateway` service's job is entirely to handle the OAuth dance - if it detects that the request is not authenticated - and to proxy requests to two other HTTP endpoints: the `api` we just built, and have running on port `8081`, and the static HTML process running on port `8020`.
+The `gateway` service's job is entirely to handle the OAuth dance - if it detects that the request is not authenticated - and to otherwise proxy requests to two other HTTP endpoints: the `api` we just built, and have running on port `8081`, and the static HTML process running on port `8020`.
 
 Here's the routing table
 
@@ -19,7 +19,8 @@ Here's the routing table
 |===
 
 The `gateway` also sends along the JWT token to the downstream HTTP endpoints, acting as a token relay.
-The `static` site won't care (it's just serving up static `.html` and `.css` files, after all), but the `api` will.
+The `static` site won't care (it's just serving up static `.html` and `.css` files, after all), but the `api` is a resource server, and it will care.
+The `api` will refuse to send back data unless that token is specified.
 
 Let's look at the Java code first.
 
@@ -69,4 +70,19 @@ include::gateway/src/main/resources/application.properties[]
 <1> this process will run on port `8082`.
 <2> it will use the issuer URI to validate JWTs if it detects them
 <3> otherwise it will use this configuration to, acting as a client, inintiate an OIDC login to allow you to come up with a valid token.
+
+The last several lines are where we tell the OAuth client what it should ask for from our OAuth IDP (the Spring Authorization Server). You'd write similar configuration for any OAuth IDP, not just the Spring Authorization Server. In this example, the client is configured to identify itself as the `crm` client, with `crm` as the client secret. It's being configured to ask for the `authorization_code` authorization grant. It's being configured to instruct the OAuth IDP to rediect _back_ to the gateway, with a special pseudo URL syntax: `{baseUrl}/login/oauth2/code/{registrationId}`. Spring Security will set that endpoint up for us on the gateway, so there's nothing we need to do for that to work. Finally, the OAuth client asks for certain permissions: `user.read` and `openid`.
+
+== A User Interface for a Browser User
+
+The OAuth client is where all outside visitors will begin their journey. But obviously, they're not going to be issuing HTTP requests with `curl` , they're going to be expecting some sort of user interface.  We looked at how Spring Cloud Gateway requests will route proxied resources: `/api/**` to our backend `api` and everything else to the static HTML5 and JavaScript code. In this case, it's just running on our local machines, but one images this stuff would be deployed to a CDN and made available locally in a real production application.
+
+In order to keep things as simple as possible, I've written a snigle page `.html` application with a smattering - a pinch, a dash, even! - of JavaScript. The concepts will be the same whether you eventually use Vue.js, React, Angular, jQuery, or whatever other thing you decide to use.
+
+So, here's the `.html` file.
+
+[source,html]
+----
+include::static/index.html[]
+----
 
