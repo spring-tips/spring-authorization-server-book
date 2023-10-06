@@ -13,10 +13,8 @@ class LoomTest {
 
     @Test
     void threads() throws Exception {
-
         var switches = 5;
         var observed = new ConcurrentSkipListSet<String>();
-
         var threads = IntStream
                 .range(0, 1000)// <.>
                 .mapToObj(index -> Thread
@@ -26,11 +24,8 @@ class LoomTest {
                                 observed.addAll(observe(index));
                         }))
                 .toList();
-
         for (var t : threads) t.start();
-
         for (var t : threads) t.join();
-
         Assertions.assertTrue(observed.size() > 1); // <.>
     }
 
@@ -43,10 +38,6 @@ class LoomTest {
             throw new RuntimeException(e);
         }
         var after = Thread.currentThread().toString();
-        return index == 0 ? carefulAdd(before, after) : Set.of();
-    }
-
-    static private Set<String> carefulAdd(String... args) {
-        return new HashSet<>(Arrays.asList(args));
+        return index == 0 ? new HashSet<>(Arrays.asList(before, after)) : Set.of();
     }
 }

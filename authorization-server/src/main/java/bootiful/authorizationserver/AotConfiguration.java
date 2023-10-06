@@ -57,7 +57,6 @@ class AotConfiguration {
 
     static class Hints implements RuntimeHintsRegistrar {
 
-
         private Set<Class<?>> subs(Reflections reflections, Class<?>... classesToFind) {
             var all = new HashSet<Class<?>>();
             for (var individualClass : classesToFind) {
