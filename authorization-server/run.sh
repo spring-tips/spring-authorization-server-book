@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-./gradlew bootRun
+mvn clean spring-boot:run

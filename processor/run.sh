@@ -1,3 +1,2 @@
 #!/usr/bin/env bash
-#./gradlew bootRun
-mvn -DskipTests spring-boot:run
+mvn clean spring-boot:run
