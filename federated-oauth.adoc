@@ -1,0 +1,3 @@
+= Federated OAuth with the Spring Authorization Server
+
+// there's an example in the Spring Authorization Server samples that shows how you can get a Google and Github token with one SAS JWT token

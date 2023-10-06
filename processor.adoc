@@ -1,4 +1,4 @@
-== The Processor
+= The Processor
 
 // in this section we'll look at how to use OAuth to secure a headless backoffice process
 // the approach we'll take could be easily applied to other contexts, like Spring's WebSocket support using the `BeforeSocketHandshakeInterceptor`

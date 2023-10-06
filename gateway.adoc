@@ -102,6 +102,6 @@ I love this code, not because of the JavaScript (bleargh!), but because it's so 
 
 At no point does the JavaScript code ever see your username and password. And, in this case, it doesn't even see your JWT! Indeed the code is written in such a way that it doesn't even know OAuth is involved. Which is nice. now you can develop the application without OAuth, get it working, then add the OAuth resource server and OAuth client support to the backend  code and call it done.
 
-Remember, the user visting the HTML page won't even see any of this markup unless they've authenticated. They'll be redirected away before they ever get a chance. So not only is this page completely unaware of security, it doesn't need to be.
+Remember, the user visiting the HTML page won't even see any of this markup unless they've authenticated. They'll be redirected away before they ever get a chance. So not only is this page completely unaware of security, it doesn't need to be.
 
 

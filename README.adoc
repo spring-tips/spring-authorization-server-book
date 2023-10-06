@@ -29,9 +29,10 @@ toc::[]
 include::frontmatter.adoc[]
 
 = The Spring Authorization Server
-
+include::oauth.adoc[]
 include::authorization-server.adoc[]
 include::persistence.adoc[]
+include::federated-oauth.adoc[]
 
 = OAuth all the Things
 

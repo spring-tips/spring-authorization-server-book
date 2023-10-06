@@ -1,0 +1,82 @@
+= Introducing OAuth
+
+OAuth is an open standard for access delegation that is commonly used to grant websites or applications access to information on other websites but without giving them the passwords.
+This allows users to permit third-party applications to access their data without sharing their credentials.
+
+==  What is OAuth?
+
+OAuth (Open Authorization) is a protocol that lets applications securely act on a user's behalf.
+Think of it like a valet key for the internet.
+It provides a way for users to grant third-party apps limited access to their resources, either on a temporary or permanent basis, without revealing their credentials, in the same way that a car's valet key allows the valet to drive the car, but does not permit access to the secured, locked compartments of the vehicle like the glovebox or the trunk (or boot).
+
+You have probably used OAuth before!
+If you've ever clicked on a "Log in with Facebook" or "Log in with Google" or "Log in with Apple" button on a website, you were probably using OAuth.
+Instead of creating a new username and password for that website, you’re granting it permission to access a certain piece of information from platforms like Facebook, Google, or Apple, respectively.
+That information is usually just enough identity information to be able to put together a profile so that the service you're loggging in to knows what to call you and how to correllate and associate requests with you.
+
+// todo i need to fix everything after this!!
+== Why is OAuth used?
+
+Before OAuth, user data was accessed by third-party apps in an cumbersome and insecure way: the user would have had to provide their own username and password to every application, meaning the application had full access to the account.
+Ideally, every service into which you authenticated was doing the right thing and fully encrypting your credentials, but if even one of them wasn't then your password is vulnerable should that service ever be hacked.
+
+This arrangement poses a security risk.
+It's also annoying: you'd have to get in the business of coming up with and maintaining passwords for every site you visit.
+Sites don't want your password, they want to know who they're dealing with.
+Most sites would be very happy to outsource the work of validating that you are who you say you are, and focusing on selling you stuff, presenting you stuff, or whatever else it is those sites did.
+OAuth lets them get out of that business.
+
+OAuth introduced a way to provide tokens instead of credentials, granting limited access to the user's data.
+If an attacker steals the token, they would only have access for a limited time and only to the data to which their token was entitled.
+This entitlement is called a _scope_.
+
+There are many scenarios where it makes sense to use OAuth.
+
+* Third-party applications and services: applications that want to access services like Google Drive, Twitter feeds, or Facebook posts.
+* Mobile Applications: smartphone applications that access web services but don’t want to store passwords.
+* Content Aggregation: an app that pulls data from multiple sources (e.g., various email accounts).
+* Federation: if you want need to maintain secure integrations with a number of OAuth platforms, it's possible to use an OAuth IDP like Spring Authorization Server to act as a facade.
+
+== OAuth is a big Improvement
+
+Before OAuth came onto the scene, the most common method of granting third-party applications access was by sharing usernames and passwords.
+
+This posed a series of challenges:
+
+* Security: sharing your actual password with third parties is inherently risky.
+* Full Access: third-party apps would have full access to a user's account.
+* Revocation: if a user wanted to stop an app from accessing their data, the only way was to change their password.
+
+OAuth changed this by not requiring users to share their passwords, letting users specify what data the application can access (scope), and providing a way to revoke access without changing user passwords.
+
+== Evolution of OAuth:
+
+OAuth has evolved over the years to address shortcomings and to better meet the requirements of developers and organizations.
+There are two main versions of OAuth:
+
+**OAuth 1.0**: The initial version, published in 2010. It was complex and required cryptographic signatures.
+There is also OAuth 1.0a, which is slightly better, but we're not stopping the tour to take a look at it.
+Not when our destination is so much more magnificent...
+
+**OAuth 2.0**: Introduced in 2012 as a successor, it simplifies the process and separates the roles of obtaining credentials and API access.
+It's more flexible, and while it doesn’t force encryption, when combined with HTTPS, it’s considered secure.
+
+== OAuth vs. SAML
+
+OAuth and SAML (Security Assertion Markup Language) are both protocols for identity and authentication, but they serve different purposes and have been designed with different use cases in mind:
+
+OAuth is primarily for authorization and delegated access to resources without sharing the original credentials.
+SAML, on the other hand, is focused on authentication and single sign-on (SSO) solutions, allowing users to log in once and gain access to multiple applications.
+OAuth is often used for token-based authentication, while SAML is used for enterprise-level SSO.
+SAML tokens are XML-based while OAuth tokens are JSON Web Tokens (JWTs) and are smaller and more efficient.
+SAML has a steeper learning curve and is more complex, while OAuth is simpler, especially in its 2.0 version.
+
+== Towards a passwordless future
+
+one of the key improvemtns of OAuth is that it centralizes authentication. Authentication is a tough problem, and there are a million things to get right for it to even begin to be considered secure. Okta, Google and Meta and Github and the Spring team have a vested effort in committing people and time to this ongoing   effort so that you don't have to. Done correctly, a good OAuth integration can reduce the number of passwords you need to maintain to live on the internet by a considerable amount.
+
+in this book, we're going to be focusing on the Spring Authorization Server, which - once at the heart of your SSO solution - can greatly simplify the identity for your organization, reducing it down to one credential.
+
+But what about no credentials? Or, better, what about more secure, alternative credentials? That's the ideal, and the trend seems to be moving that way, with large providers like Apple embracing _passwordless_ logins tied to your biometrics. Behind the scenes, a lot of these solutions are integrating WebAuthn and Passkey. Conceptually, this sort of thing could be added to a Spring Authorization Server instance.
+
+
