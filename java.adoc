@@ -53,7 +53,7 @@ Java Mission Control takes Java's already stellar support for observability to t
 
 === Performance
 
-Java 17 is _fast_ and reliable.
+Java 21 is _fast_ and reliable.
 
 Java's garbage collector is the stuff of legend.
 It's fast, lightweight, and minimally invasive.
@@ -67,7 +67,7 @@ Finally, Java 14 introduced the Shenandoah GC, which keeps pause times low and d
 And it's fast.
 I can't give you a specific number or anything because it is so highly workload-sensitive, but https://www.optaplanner.org/blog/2021/09/15/HowMuchFasterIsJava17.html[this post from the folks at OptaPlanner] is persuasive.
 They saw an average of 8.66% improvement for their CPU-intensive workloads when using the G1 GC, measured after a discarded 30 second warmup period.
-These numbers reflect the jump from Java 11 (not Java 8) to Java 17. I can only imagine the numbers from Java 8 to Java 17 are even better.
+These numbers reflect the jump from Java 11 (not Java 8) to Java 17. I can only imagine the numbers from Java 8 to Java 17 are even better. And the numbers for Java 21, even better still!
 And that number is just an average: some workloads improved by as much as 23%!
 
 === Autocloseable
@@ -523,5 +523,5 @@ You'll get to have your cake and eat it too: scalable, but simpler, code.
 
 I didn't intend for this chapter to be a thorough introduction to all things Java.
 Just an amuse-bouche for all the cool stuff you might see me do in my code independent of Spring.
-Java 17 is a very compelling way to write code, and it's no coincidence that it's starting to look more and more like languages like Kotlin, which is also a lovely way to write Spring Boot-based applications.
+Java 21 is a very compelling way to write code, and it's no coincidence that it's starting to look more and more like languages like Kotlin, which is also a lovely way to write Spring Boot-based applications.
 Hopefully, this chapter has been persuasive, and you're ready to turn the page.
