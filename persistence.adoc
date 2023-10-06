@@ -1,0 +1,512 @@
+= Persistent State in the Spring Authorization Server with PostgreSQL and JDBC
+
+Spring makes it easy to substitute implementations with polymorphism.  _Dependency injection_ is one of the key reasons we use Spring.
+Spring Boot-based configuration makes this doubly powerful.
+While the Spring Authorization Server does amazing things out of the box, its real power lay in all the knobs and leavers available to you because it's just another Spring Boot autoconfiguration.
+We have already acknowledged that keys parts of the Spring Authorization Server defer to in-memory implementations.
+In this section, we'll swap those, and more, out for implementations using JDBC.
+We'll use JDBC, but these are just interfaces.
+If you don't want to use JDBC, then feel free to implement the interfaces for yourself, deferring to whatever underlying storage mechanism you want.
+Spring Data is your friend...
+
+Before we can get started, we'll need a PostgreSQL database.
+Some place in which to store our state.
+In the root of the project, run `docker compose up`.
+
+Now, we're going to need to retool our project to accomodate JDBC, so add the following dependencies to the Gradle build:
+
+[source,groovy]
+----
+	runtimeOnly 'org.postgresql:postgresql'
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+----
+
+Modify `application.properties` or `application.yaml` to point to the newly configured PostgreSQL database with username, schema, and password all set to `postgres`.
+(Sigh.
+I can feel Spring Security lead Rob Winch staring at me disapprovingly because of my terribad passwords: I'm trying to demonstrate something here!) Here's the relevant configuration for `application.properties`.
+
+[source,properties]
+----
+spring.datasource.url=jdbc:postgresql://localhost/postgres
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+# <1>
+spring.sql.init.mode=always
+# <2>
+spring.sql.init.schema-locations=classpath:sql/schema/*sql
+# <3>
+# spring.sql.init.data-locations=classpath:sql/data/*sql
+----
+
+<1> This tells Spring Boot to initialize the SQL database with the schema in `src/main/resources/schema.sql` and `src/main/resources/data.sql`.
+Be sure to disable this property in production!
+<2> This tells Spring Boot to not use `schema.sql` specifically, but to instead use _all_ `.sql` files in `src/main/resources/sql/schema/`.
+This way, we can keep the various DDL statements separate.
+<3> If enabled, this line tells Spring Boot to not use `data.sql` specifically, but to instead use _all_ `.sql` files in `src/main/resources/sql/data/`.
+This way, we can keep the inserts separate.
+Make sure to create this directory if you enable this property.
+
+== A Brief Note on Storing Credentials
+
+Every time you see a password, or any kind of credential like a key, in the source code of these programs, remember, this is a _demonstration_.
+There are a million ways to externalize credentials from the source code, and you should use one of them!
+
+It's essential to keep credentials both secure and accessible for the applications that need them, without risking exposure.
+Here are some methods and tools to store and make private keys accessible to a Spring Boot application:
+
+* **Environment Variables**: One of the most common ways is to use environment variables to store sensitive data.
+These variables can be set on the system where your application runs.
+This method separates configuration from the application, but it's not the most secure method on its own, especially if multiple applications share the environment.
+* **Java's KeyStore (JKS/JCEKS)**: Java provides its built-in mechanism for securely storing cryptographic keys and certificates - Java KeyStore.
+* **AWS Secrets Manager or AWS Parameter Store**: If you are deploying on AWS, you can use these services to store and retrieve your application secrets.
+* **HashiCorp Vault**: An open-source tool for secret management.
+It allows you to centrally store, access, and deploy secrets across applications and infrastructure.
+* **Azure Key Vault**: If you are on Azure, you can use Azure Key Vault to store, manage, and access secrets.
+* **Google Cloud Secret Manager**: For applications deployed on GCP.
+* **Encrypted Configuration Files**: Use tools like Jasypt with Spring Boot.
+Jasypt provides Spring Boot integration and allows you to encrypt property values in your configuration files.
+* **Kubernetes Secrets**: If you are deploying your application in Kubernetes, it offers its own secrets management mechanism.
+Though it is better than plain config maps (`ConfigMap`), Kubernetes Secrets are Base64 encoded by default and not encrypted.
+For enhanced security, consider integrating with external secrets managers like HashiCorp Vault.
+* **Dedicated Hardware Security Modules (HSMs)**: These are physical devices that safeguard and manage digital keys, perform encryption and decryption.
+Cloud providers like AWS offer their own cloud HSM services.
+* **Use Configuration Servers**: For example, Spring Cloud Config Server.
+Though not a secrets manager _per se_, when combined with encryption, it can serve configurations securely to your applications.
+
+Always encrypt sensitive data in transit and at rest.
+Rotate secrets regularly.
+Use IAM roles, policies, and least privilege principles to restrict who can access secrets.
+Monitor and audit access to secrets.
+Avoid hardcoding secrets or placing them in a version control system (VCS), even if encrypted.
+Backup your secrets, but ensure backups are also secured.
+No matter which approach you choose, it's essential to keep the principle of least privilege in mind.
+Only the necessary entities should have access to your secrets, and they should only be decrypted at the last possible moment (e.g., by the application when needed).
+
+Also, we're going to need to encode passwords so that they're not lying around at rest in plain text.
+Define a bean of type `PasswordEncoder` for use in your program.
+
+[source,java]
+-----
+include::authorization-server/src/main/java/bootiful/authorizationserver/SecurityConfiguration.java[]
+-----
+
+<1> this is a sort of compose `PasswordEncoder`, checking the prefix of the password string for information as to which encoder to use.
+We've already seen it action.
+The `spring encodepassword`  CLI command produces a string that starts with `{bcrypt}...`.
+The default for Spring Security, today, as of this writing, is to use BCrypt.
+But that may change, and when the default changes, existing passwords will continue to work because the `PasswordEncoder` will know to look for the prefix and use the older BCrypt encoder when dealing with those older passwords.
+
+We'll use the `PasswordEncoder` more later.
+
+== Persisting Users
+
+There are other implementations of the `UserDetailsService` interface that you can use to persist users durably.
+Thinking from a more operational perspective, it's possible you'd want to dynamically register users dynamically, rather than having to restart the Spring Authorization Server instance after you've updated the source code.
+Spring Security has an extension of the `UserDetailsService` interface called `UserDetailsManager` which gives you explicit control over the lifecycle of `UserDetails`: adding, updating, deleting, etc.
+And, as you might imagine, there's a persistent implementation of this interface called `JdbcUserDetailsManager` that uses JDBC.
+
+You'll need to install some SQL schema first.
+Spring Security ships with some usable schema on the classpath, but unfortunately it doesn't work with PostgreSQL, and it's going to fail if there are already table definitions.
+So we'll modify it accordingly, as shown in `src/main/resources/sql/schema/users.sql`.
+
+[source,sql]
+-----
+include::authorization-server/src/main/resources/sql/schema/users.sql[]
+-----
+
+We could also define the users with SQL in a file under the `sql/data/` folder, but I want you to see what it looks like to use the Java API to programmatically register a user, so here is both the `UserDetailsService` registration and a bean that uses the `UserDetailsService` to write some data to the database.
+
+[source,java]
+-----
+include::authorization-server/src/main/java/bootiful/authorizationserver/UsersConfiguration.java[]
+-----
+
+<1> this is a convenient pattern: define the prototype for all new users once and then reuse the builder
+<2> Poor Rob Winch's eyes! why are there passwords just strewn about our Java source code?
+Remember what we talked about earlier: don't do this in production code!
+
+== Persisting Clients
+
+The `RegisteredClientRepository` interface is trivial and lends itself to implementation with a persistent store.
+It's easy enough to do that here, too, with implementations of the `RegisteredClientRepository`.
+There's an implementation called `JdbcRegisteredClientRepository` that uses JDBC to manage registered clients.
+It would be a fairly trivial project to implement alternatives using other persistence mechanisms like MongoDB or Hashicorp Vault.
+
+The obvious advantage of a `RegisteredClientRepository` backed by a persistent store is that you could build a self-service registration form (or workflow) - just like Google and Apple do - for your organizations developers to register clients on demand without having to restart anything or manipulate source code.
+
+There's some schema on the classpath (`classpath:org/springframework/security/oauth2/server/authorization/client/oauth2-registered-client-schema.sql`) for the implementation that we need to take care to install first.
+We could tell Spring Boot to run this directly, but the trouble is that it'll fail on the second run when it executes the same DDL statements and experiences a conflict trying to create something that's already there.
+Create a new file `src/main/resources/sql/schema/oauth2-registered-client.sql` and use this DDL instead.
+
+[source,sql]
+----
+include::authorization-server/src/main/resources/sql/schema/oauth2-registered-client.sql[]
+----
+
+And here's the definition of the `RegisteredClientRepository` and a runner that uses it to install a client, more or less identical to the client we registered earlier in `application.properties`.
+
+[source,java]
+-----
+include::authorization-server/src/main/java/bootiful/authorizationserver/ClientsConfiguration.java[]
+-----
+
+<1> register the `RegisteredClientRepository`
+<2> this installs a registered client that's more or less equivalent to what we saw earlier in the `application.yml` properties file.
+
+== Persisting Authorizations
+
+Remember that bit where you got redirected to the Spring Authorization Server and had to click a checkbox to confirm that the user had `user.read` scope?
+That fact - the consent of the scope - is stored in memory by default, but it could be stored in a database too.
+(Big surprise, I know!)
+
+There are two interfaces of note here: `OAuth2AuthorizationService` and `OAuth2AuthorizationConsentService`.
+
+`OAuth2AuthorizationService` handles representations of an authorization - the JWT token, the client, etc.
+It's the same story as before: there's schema on the classpath (`org/springframework/security/oauth2/server/authorization/oauth2-authorization-schema.sql`) but it doesn't work with PostgresSQL and, importantly, even if it did it would fail on the second run through because Spring Boot would try to define the table twice, in effect.
+So we'll modify it.
+Create a file `src/main/resources/sql/schema/oauth2-authorization-schema.sql`.
+The changes we've made replace all `blob` types with `text`.
+
+[source,sql]
+-----
+include::authorization-server/src/main/resources/sql/schema/oauth2-authorization-schema.sql[]
+-----
+
+`OAuth2AuthorizationConsentService` handles representations of an OAuth 2.0 "consent" to an Authorization request, which holds state related to the set of authorities granted to a client by the resource owner.
+It's the same story as before: there's schema on the classpath (`org/springframework/security/oauth2/server/authorization/oauth2-authorization-consent-schema.sql`) but it doesn't work with PostgresSQL and, importantly, even if it did it would fail on the second run through because Spring Boot would try to define the table twice, in effect.
+So we'll modify it.
+Create a file `src/main/resources/sql/schema/oauth2-authorization-consent-schema.sql`.
+The changes we've made replace all `blob` types with `text`.
+
+[source,sql]
+-----
+include::authorization-server/src/main/resources/sql/schema/oauth2-authorization-consent-schema.sql[]
+-----
+
+== Persisting the HTTP Sessions Themselves
+
+The final piece of the persistence pie is to persist the actual HTTP sessions themselves.
+Spring Authorization Server assumes a Servlet container is present somewhere.
+By default, Spring Boot uses Apache Tomcat, though that's very configurable.
+And Apache Tomcat, in turn, provides session management features consistent with the HTTP Servlet specification.
+It's even got pluggable HTTP session management, meaning you can plugin other implementations of Apache Tomcat's proprietary abstraction.
+But this isn't easy, or portable.
+Indeed, any web server is going to have some rudimentary HTTP session management, but session clustering and replication, consistency checks, etc., are not their _raison d'être: serving HTTP requests is.
+
+Spring Session can help.
+It wraps the containers' default `HttpSession`.
+All interactions you have pass through the wrapper, which in turn delegates to any of a number of implementations backed by technology that is far faster and more reliable in the ways of making data consistently available.You can use implementations for, among other things, Hazelcast, Redis, and of course any 'ol SQL `DataSource`.
+We're choosing to continue to leverage our investment in PostgreSQL, so we'll use the Spring Session JDBC module.
+
+Add the following dependency to the build:
+
+[source,groovy]
+----
+	implementation 'org.springframework.session:spring-session-jdbc'
+----
+
+There is a property, `spring.session.jdbc.initialize-schema=always`, that once specified will cause Spring Session to install the JDBC schema for you in the database.
+It worked for me (surprise!), in PostgreSQL.
+But, I just really want the schema to all be in one place where I can version control it, audit it, etc, so here's the schema.
+Create a file `src/main/resources/sql/schema/spring-session-jdbc.sql`.
+
+[source,sql]
+-----
+include::authorization-server/src/main/resources/sql/schema/spring-session-jdbc.sql[]
+-----
+
+We've looked at how to persist almost all aspect of the domain of the Spring Authorization Server with JDBC.
+All aspects, except _keys_.
+Keys require a long discussion and so in the next chapter we'll look into that.
+
+== Keys
+
+Every time the Spring Authorization Server starts up, the Spring Boot autoconfiguration kicks in generating new keys for our application.
+It uses the keys to sign the JWT tokens that it vends for our other applications.
+Other applications - clients, microservices, etc. - retain these tokens, sometimes for hours or days or even weeks!
+What happens when you restart the Spring Authorization Server, it autocreates new keys, and then a client with a JWT signed with the old keys tries to connect?
+It fails!
+Having the Spring Authorization Server generate random tokens on every restart can be quite a boon to getting started, but we should furnish our own, stable key if we want the JWTs to survive restarts.
+And load balancing, for that matter!
+After all, each instance of the JVM would, by default, have different keys.
+We're going to add two new files, a private and a public key, and use that to create a `JWKSource<SecurityContext>`.
+
+Generate a key pair.
+You'll need `openssl` or `ssh-keygen` installed.
+
+[source,shell]
+----
+# <1>
+openssl genpkey -algorithm RSA -out private_key.pem
+openssl pkcs8 -topk8 -inform PEM -outform PEM -in private_key.pem -out private_key_pkcs8.pem -nocrypt
+openssl rsa -pubout -in private_key_pkcs8.pem -out public_key.pem
+mv private_key.pem app.key
+mv public_key.pem app.pub
+# <2>
+openssl req -new -x509 -key private_key_pkcs8.pem -out cert.pem -days 365
+----
+
+<1> make sure you execute all the following commands in a new, empty directory.
+It's important that some of the generated files aren't lost in the wildnerness of whatever busy folder you happen to have created them.
+<2> this command exports a self-signed certificate (valid for 365 days) that you could (optionally) use if you wanted to store the file in the Java KeyStore as a PKCS13 file.
+
+You'll get two artifacts, `app.pub` and `app.key`.
+Copy them both, the private and public key, to the `src/main/resources` folder: the private key should be called `app.key`, and the public key should be called `app.pub`.
+
+I created three (arbitrary) properties in `application.properties` to describe these keys and assign them an ID.
+
+[source,properties]
+----
+jwt.key.id=bootiful-jwt-key-1
+jwt.key.private=classpath:app.key
+jwt.key.public=classpath:app.pub
+----
+
+We'll use the properties when we define the `JwkSource<ServerContext>` bean.
+
+[source,java]
+----
+include::authorization-server/snippets/SimpleKeyConfiguration.java[]
+----
+
+In this example, I've kept the private key (`app.key`) in the source code of this repository, but as you can imagine, this is a **very bad** idea in production.
+Don't forget my admonition earlier: take care to handle your credentials securely.
+There are some solid options, including Hashicorp Vault, your favorite hyperscaler cloud's secrets management tools, Lastpass, etc.
+If you need it available for this program, it should be passed into the application in such a way that it's very difficult for others to lay hands on it.
+Perhaps as environment variable in your application's process space?
+Or as an encrypted file that can only be decrypted with a rotating key?
+Rotating keys... that brings up one more thing we should cover!
+
+=== Rotating Keys
+
+In the last example we plugged in a fixed key we generated by hand using `openssl`.
+It works, for now, but what happens when we need to rotate the keys?
+Rotating cryptographic keys is a well-established security practice, and it's often recommended to enhance the security posture of systems that use encryption or authentication mechanisms.
+
+Here are a few reasons:
+
+Regularly rotating keys limits exposure and ensures that whatever key an attacker possesses becomes obsolete after a certain time.
+
+Key rotation also mitigates the risk of weak keys or, as sometimes happens, cryptographic erosion.
+Cryptographic erosion is when you have keys that are susceptible to gains in computing power that make older keys easier to compromise.
+
+Some industry standards and regulations require periodic key rotation.
+For instance, the Payment Card Industry Data Security Standard (PCI DSS) has requirements around key management practices, which includes periodic key rotation.
+
+So, we agree it's important, but how do we do it?
+Conceptually, it's easy: we're going to swap out the implementation of the `JWKSource` for an implementation that defers to a repository.
+In practice, there are a lot more moving parts involved because we have to actually persist the keys somewhere!
+Remember wha we said about the keys in the last section?
+How we should encrypt the keys, rather than having them laying around on disk?
+The same applies here.
+
+Also, if we're going to rotate keys, we neeed a way to generate them, and so we'll need to write some code there, too.
+After all, using `openssl` was easy enough for a one-time thing, but we wouldn't want to shell out for each new key generated.
+So, we'll need to write some code there, too.
+And, finally, we'll need to store these keys somewhere.
+I am using PostgresSQL so we'll use that.
+
+=== A Brief Look at the state of Cryptography with PostgreSQL
+
+Most databases support column level encryption of data at rest.
+That is, nothing is ever written to disk in an unencrypted form.
+PostgreSQL does not, at least not out of the box.
+There are plugins,  https://www.postgresql.org/docs/current/pgcrypto.html[like PGCrypto], that provide functions that you can use to encrypt text.
+
+You can use PGCrypto pretty easily.
+It's a trusted module that can be loaded into the database even if you're not a superuser.
+Log in to your PostgreSQL instance.
+If you're using the `docker-compose.yml` file, then you can run:
+
+[source,shell]
+----
+PGPASSWORD=postgres psql -U postgres -h localhoslt postgres
+----
+
+Once in, you'll need to load the plugin.
+It's usually bundled with your PostgreSQL distribution.
+
+[source,shell]
+----
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+----
+
+You can then confirm that it's worked by using one of the functions provided, like this:
+
+[source,shell]
+----
+SELECT crypt('hello, world', gen_salt('bf'));
+----
+
+This example uses the Blowfish algorithm to encrypt some text.
+This is an awesome option, but it's unique to PostgreSQL.
+
+Some cloud providers have PostgreSQL offerings that support transparent encryption at rest.
+For instance, AWS RDS for PostgreSQL supports encryption at rest using AWS Key Management Service.
+
+I love PostgreSQL and, if I were building something for production, I'd have no trouble trusting PostgreSQL.
+But, in the interest of exploring Spring Security, and keeping our code as generic and easily moved from one database to another, we'll use Spring Security's equally rich encryption support to encrypt the private key (and the public one, though we don't really need to) and store it in the database.
+We'll need a password and a salt fort he encryption, hwoever, and those keys should ultimately not be stored at rest unencrypted.
+We talked about this!
+Store _those_ keys somewhere like Hashicorp Vault or your hyperscaler's key management solution.
+
+=== Generating New Keys Programatically
+
+First thing's first, we'll need a way to generate new keys programmatically.
+Can't rotate 'em if we can't generate 'em!
+Mercifully, the Java Security APIs are pretty remarkable here.
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/keys/Keys.java[]
+----
+
+Easy!
+The only externally visible method is `generateKeyPair`, which takes a key ID (a `kid`), and a timestamp, and returns an instance of `RsaKeyPair`, which is our repository's domain type.
+It's a record to hold both the generate public and private keys.
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/keys/RsaKeyPair.java[]
+----
+
+<1> No notes.
+I just love Java records and want us to take a moment to appreciate them.
+
+We're going to implement a repository to make working with, and persisting, `RsaKeyPair` instances.
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/keys/RsaKeyPairRepository.java[]
+----
+
+<1> find the key pairs and preserve ordering.
+We want the latest key to be first.
+<2> This method looks so simple.
+Don't trust it.
+It's a lie!
+
+Saving the `RsaKeyPair`, in this example, means writing it to our database, which means we'll need a way to serialize the `java.security.*` key objects.
+It's not as straightforward as you'd think!
+But I got it working and put that logic in two implementations of Spring Framework's handy `Converter<T>` interface:  `RsaPrivateKeyConverter` for private keys, and `RsaPublicKeyConverter` for public keys.
+
+Here's the `RsaPrivateKeyConverter`:
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/keys/RsaPrivateKeyConverter.java[]
+----
+
+<1> serialization involves adding a header and footer to the content of the key and then serializing, but not before Base64 encoding the content of the key, and then passing it through a Spring Security `TextEncryptor`
+<2> deserialization is basically the same, in reverse.
+Decrypt the text by passing it through a Spring Security `TextEncryptor`, then strip out the header and footer, and then use the Base64 decoder to decode the content, and then finally create a key using the Java Security `KeyFactory`.
+
+The code for `RsaPublicKeyConverter`.
+We won't rehash it since its structure is basically identical to the `RsaPrivateKeyConverter`.
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/keys/RsaPublicKeyConverter.java[]
+----
+
+We'll look at the configuration of the `TextEncryptor` used in both implementations in a bit.
+
+We'll need to register these converters.
+I suppose I could've aded a `@Component` annotation to each of them, but instead I chose to register them with Java configuration, like this:
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/keys/Converters.java[]
+----
+
+Let's look at the repository implementation which will use JDBC.
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/keys/JdbcRsaKeyPairRepository.java[]
+----
+
+<1> in order to find the records we'll issue a query and pass in the  `RowMapper<RsaKeyPair>`, which is an instance of `RsaKeyPairRowMapper`, which we'll explore shortly.
+<2> writing the record is pretty easy, too.
+The converters do most of the work. then it's a simple matter of lining up the converted values as arguments for the SQL update.
+
+We saw that the repository implementation uses a Spring JDBC `RowMapper<T>` instance, which looks like this:
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/keys/RsaKeyPairRowMapper.java[]
+----
+
+<1> again, one of the nice things about this implementation is that most of the heavy lifting is in the converters.
+<2> this stuff is thankfully much easier to deal with
+<3> I've extracted out the logic of extracting a field from theh `ResultSet`, passing it to a converter, and then returning it to a separate method.
+
+now we've done everything we need to do to support reading and writing key pairs.
+Let's put it all to good use in an implementation of `JWKSource`, which - when you look at it - is almost anticlimactic.
+There are two concerns being adressed in this implementation, telling Nimbus, the library whose support for JWT underpins the Spring Authorization Server, how to load a new key given a query (called a `JWKSelector`) and telling Spring Authorization Server that we want to have a chance to post-process, to _customize_, the OAuth 2.0 token attributes.
+We'll plug that OAuth2TokenCustomizer functionality in later.
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/keys/RsaKeyPairRepositoryJWKSource.java[]
+----
+
+<1> when asked, we pass thrugh and return the list of `RsaKeyPair` instances from the database, turning them into `RSAKey.Builder` instances.
+<2> when asked, we customize the JWTs that are generated by specifying the key ID, so that it lines up with the keys in the repository.
+
+Let's see how all of this gets plugged into Spring Authorization Server through configuration.
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/keys/KeyConfiguration.java[]
+----
+
+<.> this is the `TextEncryptor` that's doing so much of the work for us in the converters we looked at earier.
+It's a `TextEncryptor`, as opposed to a `BytesEncryptor`.
+Ultimately, it's using an algorithm called AES, which is the gold standard in ciphers today, succeeding a long line of other algorithms - like DES and XDES - that go all the way back to the 1970's.
+It's both space efficient and cryptographically secure.
+<.> We only want to plugin the `OAuth2TokenCustomizer` for the `JwtGeneator`, but need to redeclare the bean that uses it, the `OAuth2TokenGenerator`. most of this is boilerplate that we're copying from the defaults.
+<.> and finally we want to plugin our new `JWKSource` implementation
+
+NOTE:: In this last example we injected some propertues, `jwk.persistence.password` and `jwk.persistence.salt`, which are credentials that need to be stored in a secure fashion!
+
+The machinery is in place, but something needs to start it!
+We want the application to startup and automatically register a new `RsaKeyPair` if none exists in the database (otherwise the Spring Authorization Server wouldn't work!), and we want to be able to rotate the keys automatically.
+So, I've created a new Spring `ApplicationEvent`, called `RsaKeyPairGenerationRequestEvent`.
+We'll rig up a listener to rotate the keys whenever an instance of that event is published.
+
+Any code anywhere in the Spring Authorization Server could publish that event and trigger a key rotation.
+You could have a `@Scheduled` method that runs every 24 hours and rotates the keys.
+You could create a (secured) HTTP endpoint that publishes the event.
+You could create a (secured) Actuator endpoint that publishes the event.
+You could write some code to listen to new messages coming in from Kafka and then publish the event in response.
+The skies the limit!
+The first we're going to publish the event, howeve?
+On startup, but only if we discover there are no keys in the repository.
+Let's see that event wiring.
+
+[source,java]
+----
+include::authorization-server/src/main/java/bootiful/authorizationserver/keys/LifecycleConfiguration.java[]
+----
+
+<.> this `ApplicationListener` listens for the aforementioned event and writes a new `RsaKeyPair` to the repository, using the injeted `jwk.key.id`, whcih should be specified externally, and should remain constant. that is, after all, the key ID.
+<.> this `ApplicationListener` runs when the service starts and publishes a `RsaKeyPairGenerationRequestEvent`, but only if there are no `RsaKeyPairs` in teh repository already.
+
+At this point you can delete the key files we generated with `openssl` earlier.
+You can also delete the relevant configration in your `application.properties` or `application.yml`; the application can now create and rotate its own keys.
+
+
+// == Federated OAuth
+// todo
+// see the example that shows how to use SAS as a federated OAuth service, so then when you authenticate with SAS, you can also authenticate with Google or Github or whatever
+// https://github.com/spring-projects/spring-authorization-server/tree/main/samples/demo-authorizationserver/src/main/java/sample/federation
+
+== To Production... and Beyond!
+
+And that's it!
+Restart the Spring Authorization Server.
+Now you can run more than one instance of the Spring Authorization Server behind a load balancer, and no matter to which instance a client and its cookies present themselves, the container will resolve the session, authorizations, information about clients from the PostgreSQL database.
+It'll also sign keys in a consistent fashion.
+Is now a good time to remind you not to stash sensitive stuff in the HTTP session?
+You never know when it's going to be serialized to some datastore...

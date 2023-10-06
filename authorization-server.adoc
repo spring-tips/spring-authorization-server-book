@@ -1,0 +1,275 @@
+= Introducing the Spring Authorization Server
+
+Hi, Spring fans!
+We're going to look at some patterns and practices for working with the Spring Authorization Server, and with OAuth in general in a Spring Boot-based system.
+
+The Spring Authorization Server is one of my favorite new projects.
+It's a full-blown OAuth identity provider (IDP), distributed as Spring Boot autoconfiguration.
+
+The Spring Authorization Server is the final piece in the Spring Security OAuth's Ship of Theseus, the final replacement for a component in the built-in OAuth support in Spring Security 5 and later.
+First there was OIDC client support, and then resource server support, and now - after a _lot_ of community outpouring and support - a brand new and fully featured OAuth IDP.
+
+Why not use Keycloak, Okta, Auth0, ActiveDirectory, or something, I hear you ask?
+And the answer is.. be our guest! 99% of the stuff we're going to look at here works with any OAuth IDP.
+But i do so love the Spring Authorization Server.
+I don't know an easier way to get as configurable and flexible IDP up-and-running.
+
+Having an easy component for your IDP integration is _liberating_.
+If nothing else, it's one less `users` microservice for you to build.
+But, at its best, it's a unifying force for your organization's notions of identity and policy, all centralized.
+
+If you implement it correctly, it's one less `users` microservice for _all_ of your systems, not just the one you're working on now!
+You'll have one less bespoke token management system, too.
+OAuth offers a very nice opportunity to make your application more efficient and scalable.
+In a typical monolithic application, password validation is done in the same node where the rest of the business logic lives.
+CPU-intensive encryption will starve the rest of the requests of capacity.
+You'll also have outsourced some of the expensive CPU-centric processing that your program will probably have to do a single place in the system, where it can be scaled independently.
+
+It's Spring, so it of course supports the new-and-novel, but it's also built like all Spring Boot autoconfiguration, with hooks and customization in mind at every step.
+
+I love it and I love it for helping me to love OAuth.
+If you only knew the agony I've been subjected to in learning and welding OAuth over the years, then you'll know what a thing that is for me to say.
+And I want you, dear reader, to love OAuth.
+And the way to do that is to, basically, _not_ care about OAuth.
+
+And so we're going to take a journey to production together, with the Spring Authorization Server at our backs, and learn how to wield OAuth (via the amazing Spring Authorization Server) for some common kinds of patterns.
+
+== The Journey Ahead
+
+We're going to do a breadth-first not depth-first approach to using the Spring Authorization Server, so we're going to look at several pieces.
+By the end of this, we'll have explored:
+
+* a Spring Authorization Server instance (called `authorization-server`)
+* a backend HTTP API protected by Spring Security's OAuth 2 Resource Server capability (called `api`)
+* a headless RabbitMQ-powered microservice whose request handling is done with Spring Integration, and protected by Spring Security's OAuth 2 Resource Server capability, _sort of_. (called `processor`)
+* a static JavaScript application.
+I hesitate to even call it an application.
+It's one page, `index.html` (called `static`)
+* a Spring Cloud Gateway instance that's acting as an OAuth 2 token relay and OAuth 2 client, originating new OAuth 2 tokens if they're not present and then forwarding requests onward to the backend HTTP API and static JavaScript assets with the token in tow.
+
+We'll start first with the main event, the Spring Authorization Server.
+Arguably, everything _after_ that section would work equally well with any other OAuth 2 identity provider (IDP).
+But maybe you'll see in reading this section that you don't _need_ any other OAuth 2 identity provider any more.
+Either way, read on!
+
+== Try it out!
+
+Now, before we get ahead of ourselves, let's try it out!
+Grab (`git clone`) the https://github.com/spring-tips/spring-authorization-server[code here] to follow along.
+
+* in the root folder of the code, run `docker compose up`
+* in `authorization-service`, run `run.sh`
+* in `gateway`, run `run.sh`
+* in `api`, run `run.sh`
+* in `processor`, run `run.sh`
+* in `static`, run `run.sh`
+* visit `http://127.0.0.1:8082` (important: use the IP, _not_ `localhost`!) in the browser.
+* login with `jlong`/`password` (yes, I know it's a terrible password, don't `@` me!), and then consent when prompted.
+* you'll see a list of customers, click on the `email` button to kick off work in the `processor`.
+You should see indications in the console that your message has been sent.
+
+There are lots of moving parts, but here's what you need to know: we have a JavaScript/HTML 5 client, a backend HTTP API, and a headless backoffice process, all of which have been secured with the Spring Authorization Server.
+
+Shut everything down, and we'll start from scratch.
+
+Refreshingly simple.
+Let's dive right into the nitty-gritty.
+I want you building secure systems by the article's end.
+My goal here is not to cover _every_ possible use case, but to cover some of the typical use-cases and introduce progressively more moving parts so that, if at some point you don't see what you need, you know where to reach you to build it yourself.
+
+== Docker Compose and our Middleware
+
+I know I just told you to shut everything down, but you need to restart one thing: the Docker images for both PostgreSQL and RabbitMQ.
+I've described all of their configuration in a `docker-compose.yml` file in the root of this project.
+It looks like this.
+
+[source,yaml]
+-----
+include::docker-compose.yml[]
+-----
+
+We'll be connecting to either or both of the Docker images across many different services, so let's start them up before we proceed.
+
+Go to the root of the project.
+
+[source,shell]
+----
+docker compose up
+----
+
+RabbitMQ will be running on the usual port and have a user, `user`, and a password, `password`.
+PostgresSQL will be running on the usual port with the user `postgres`, schema called `postgres`, and the password `postgres`.
+Yes, I know these are terrible passwords...
+
+== Stand up a Spring Authorization Server Instance for Great Good
+
+Go to the https://start.spring.io[Spring Initializr (start.spring.io)], specify a group ID and an artifact ID (I chose `bootiful` : `authorization-server`) and add  `OAuth2 Authorization Server` as a dependency.
+I'd add `GraalVM Native Support` for good measure, but you do you.
+Open the downloaded project in your IDE.
+I'm using IntelliJ IDEA, but again, you do you.
+I ran the following command from the root of the newly unzipped archive: `idea build.gradle`.
+
+You've got a new Spring Boot Authorization Server.
+We need to specify two things: *users*, and *clients*.
+
+=== Users
+
+Users are pretty straight forward, right?
+A user is the sum of the username, password, and associated information attached to the systems' notion of identity.
+The beating heart of our system.
+
+There are a lot of ways to get this done.
+The easiest might be to just have one user, the _default_ user, which you can describe using Spring Boot's associated properties, like this:
+
+[source,properties]
+----
+include::authorization-server/snippets/default-user.properties[]
+----
+
+This gets us off the ground, but as soon as you want two or more users, you'll need to specify them a different way.
+The easiest is probably to define a bean of type   `InMemoryUserDetailsManager`, like this.
+
+[code,java]
+----
+include::./authorization-server/snippets/UserDetailsConfiguration.java[]
+----
+
+Thus configured we've got two users:
+
+* `jlong` with password `password` and roles `USER`
+* `rwinch` with password `p@ssw0rd` and roles `USER` and `ADMIN`
+
+This implementation is fine for development as it's all in-memory.
+In a production system, you'll probably want something more durable.
+We'll look at those possibilities in a bit.
+
+=== OAuth Clients
+
+An OAuth client defines how a program or process interacts with an OAuth IDP (like Spring Authorization Server).
+Clients correspond more or less to the programs that would like to be allowed to authenticate on behalf of users.
+
+I have tried to conceive of a clear illustration of clients in a vacuum, but it's not easy. so let's examine a real life example: you stumble upon some website, say https://www.yelp.com/[Yelp], a website that lets you contribute and read reviews about locations - restaurants, businesses, tourist spots, etc.
+You want to login to see your history.
+You _could_ create a new account there, going through the whole sign up flow and entering redundant information, but this information could soon become stale.
+Maybe you change house or email address, or whatever, and you've forgotten to go back to the site and change your information.
+Yelp know this, so they offer another path forward: `Continue with Google` and `Continue with Apple`.
+
+image::images/yelp-signup.png[]
+
+Click the button and another window on Google or Apple's sites pop up.
+
+image::images/google-signin.png[]
+
+You know what to do here: you're in familiar territory.
+It's google.com!
+You know Google.
+And Google _definitely_  knows you!
+You've got an account here, you maintain that account, and you like that account.
+You use it for your daily email, after all.
+You've even got that reassuring little padlock icon in the browser's location bar giving you the warm-n-fuzzies about this site's authenticity: it is who it claims to be.
+So you enter your information, login, and you have to whatever mutli-factor auth things Google wants you to do.
+
+image::images/google-mfa.png[]
+
+This shows up as a prompt on a completely different device, an iPad.
+
+image::images/google-is-it-you.png[]
+
+You've approved of the login, so that Google knows it really is you logging in, and now it's got to make sure you realize you're handing over some of the data associated with your identity to this new website, Yelp.com, so it throws up a consent form.
+
+image::images/google-consent-screen.png[]
+
+You click `Confirm` and then are finally logged in, with your Google identity, on Yelp.com
+
+image::images/yelp-logged-in-with-google-part-2.png[]
+
+At the end of this dance, Google.com transmitted a _token_ to the application running at Yelp.com.
+Armed with this, the application running at Yelp.com can now transmit requests to the Google.com APIs, asking it questions about you, like your email.
+It might also be able to read your Google calendar events, location data, etc.
+What precisely the application at Yelp.com has access to is a function of the _scopes_ requested by the client.
+The application at Yelp.com stores the token and uses it to interact with Google on your behalf.
+Occasionally, Google.com will expire the token.
+Tokens, like milk, go stale!
+No worries: the application at Yelp.com has a _refresh_ token it can use to refresh the token and get a new one.
+
+You're glad you signed up at Yelp.com, but look at the time!
+It's noon, the sun's out and the kid wants to go play mini golf at the place you just found on Yelp.com.
+Gotta go!
+
+Time passes, and you return to Yelp.com a week later.
+By this point, Yelp.com's expired your HTTP session, and you're logged out.
+No problem.
+Click the `Continue with Google` button again, and this time you'll just be dumped into Yelp.com, fully authenticated.
+Both Google and Yelp remember who you are and so there's no ceremony this time.
+You got fast-path'd into an authenticated HTTP session on Yelp.com.
+Thus: OAuth is invaluable both for establishing a new account and for subsequently logging into it.
+You may have changed your home address on Google.com in the meantime, and now Yelp.com can see the new address information and offer you updated recommendations, too.
+So Yelp.com is kept up-to-date and all you had to do was keep Google.com up-to-date.
+
+From the perspective of Google, Yelp.com is an OAuth client.
+All the particulars of how you went through that authentication flow - whether you needed to be redirected to Google.com, whether you should be shown a consent form, and what data Yelp.com was allowed to read from the Google.com API once it had a token stemming from this authentication flow, was governed by how the developers at Yelp.com registered their client with Google.
+
+Clients must stipulate a client ID, and a client secret.
+The client Id and client secret are transmitted in the request initiating the authentication flow, signalling to Google that Yelp.com is making this request.
+Clients also stipulate what _scopes_ they want.
+A scope is OAuth's version of rights, permissions, authorities, or claims.
+They're (basically) arbitrary strings that mean something to Google.com's API.
+
+There is one scope, `openid`, which is part of the OIDC specification.
+This scope means that you want to log in as a user with the OAuth flow.
+This is a sort of special case; Yelp.com may not want to read Google Calendar data, or read your email.
+Those scopes would necessarily be unique to Google's APIs.
+But signing a user into a site is a common enough thing and one that can be implemented usefully across all sorts of OAuth providers, so there's a specification called OpenID Connect (OIDC), that builds on top of OAuth 2.0, prescribing standard scopes and , importantly, standard APIs by which a client may look up information associated with a user.
+Yelp.com might only just need enough information from Google.com to fill out a signup form for us: name, email, etc.
+In that case, it would just specify `openid` as a scope and call it good.
+In this way the Yelp.com client could even reuse the same code across other OIDC compliant providers, changing only the client ID and client secret and the issuer URI (the API's root URL).
+Neat-o!
+
+So, if you built a backoffice process, you'd register a client for that backoffice process.
+If you built a new web application that you intend to support automatic sign-in with OAuth, you'd register a new client for that web application.
+
+The simplest way to register clients in the Spring Authorization Server is to use properties in the `application.properties` or `application.yaml` file, like in this `application.yaml` example:
+
+[source,yaml]
+----
+include::authorization-server/snippets/registered-clients.yaml[]
+----
+
+<1> you can use the https://docs.spring.io/spring-boot/docs/current/reference/html/cli.html[`spring`] CLI to encode a password for the client secret: `spring encodepassword BLAH`, where `BLAH` is the string you want to encode.
+In our case, the client ID is `crm` and the client secret is `crm`.
+(Again, I _know_ it's a terrible password.
+Don't `@` me!).
+NB: For complex strings like this, YAML parsing rules can be problematic, so I tend to wrap these things in quotation marks.
+<2> `authorization-grant-types` refers to the use case - web application, mobile, headless backoffice application, etc. - for the authentication flow. https://oauth.net/2/grant-types/[OAuth 2.0 is nothing if not flexible].
+<3> we're building a web application so the expectation is that, once you've authenticated yourself with the Spring Authorization Server, it'll redirect you back to the web application with the token in tow.
+But where?
+You specify that here.
+We haven't looked at the application yet, so this is a bit of foreshadowing, but the redirect URI specified here is designed to line up with Spring Security's OAuth client support, which we'll use on the web application.
+<4> Here we specify which scopes we'd like to be given.
+We've seen `openid` before, and the other two are arbitrary, and just for demonstration.
+
+At this point, we have a valid Spring Authorization Server, and you're ready to start using it!
+Run the application in the usual way: `./gradlew bootRun` or `./mvnw spring-boot:run` or just run the main method from your IDE.
+Congratulations on your first deployment of the Spring Authorization Server.
+We _could_ stop here, satisfied that we have got _something_ to allow us to handle development chores and start building services.
+Indeed, if you want to, you can skip ahead and things should work fine.
+
+Eventually, however, you're going to realize you can't leave things as they are - you'll need durable state.
+As-is, everything is kept in-memory.
+It's obviously non-starter to need to deploy a new Spring Authorization Server every time you add a new client, user, or otherwise.
+People will want self-service forms by which they can register new users, clients, etc.
+All existing OAuth tokens would become invalid once you restart the Spring Authorization Server, too!
+Indeed, all state related to any successful OAuth authorizations would be forgotten on every restart.
+The situation's not good, and in the next section, we're going to look at introducing persistence, with JDBC, to get around it.
+
+If you want to carry on using property files, then perhaps consider the Spring Cloud Config Server.
+It's another piece of Spring Boot-powered middleware that, once stood up, mediates access to configuration files via an HTTP API.
+The configuration files live in a version control system, like Git, which the Spring Cloud Config Server monitors.
+When the files change, the Spring Cloud Config Server serves up the new configuration data.
+Even better, the Spring Cloud Config Server can, via the Spring Cloud Bus abstraction, publish notifications to your microservices (like the Spring Authorization Server) on an event bus like RabbitMQ or Apache Kafka so that you can automatically reload the new configuration.
+This works particularly well in tandem with the Spring Cloud's `@RefreshScope`.
+In such a configuration, the configuration for everything still lives in a `.properties` or `.yaml` file, as it does now, but the files are centralized and can be changed without reloading the Spring Authorization Server.
+Storing files in a version control system gives us niceties like versioning, auditing, rollbacks, etc., for very sensitive configuration data.
+And, going a step further, you can even use the Spring Authorization Server to store data encrypted at rest.
+For more on these possibilities, check out this https://www.youtube.com/watch?v=aC_siBP8rx8&list=PLgGXSWYM2FpPw8rV0tZoMiJYSCiLhPnOc&index=31[video I did some years ago].
+And _all_ of these possibilities are enabled entirely because the Spring Authorization Server is delivered as just another Spring Boot autoconfiguration!

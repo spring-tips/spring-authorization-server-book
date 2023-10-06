@@ -1,0 +1,72 @@
+== The Gateway Client
+
+In our super secure OAuth onion, this next microservice, the `gateway`, is the outermost layer.
+It is the first port-of-call for all requests destined for the microservices in our system.
+When visitors to our site punch in the domain name for our system into a browser, it'll resolve to a loadbalancer serving this gateway service, and it is here where we'll originate an OAuth token.
+This service is also a gateway, powered by Spring Cloud Gateway.
+The gateway acts as a proxy, allowing us to forward requests to different hosts and ports, concealing from the user that the responses they're seeing are from different services.
+
+The `gateway` service's job is entirely to handle the OAuth dance - if it detects that the request is not authenticated - and to proxy requests to two other HTTP endpoints: the `api` we just built, and have running on port `8081`, and the static HTML process running on port `8020`.
+
+Here's the routing table
+
+|===
+|*HTTP origin*                                | *HTTP destination*
+|http://gateway:8082/api/customers            | http://api:8080/customers
+|http://gateway:8082/api/me                   | http://api:8080/me
+|http://gateway:8082/api/email                | http://api:8080/email
+|http://gateway:8082/index.html               | http://static:8020/index.html
+|===
+
+The `gateway` also sends along the JWT token to the downstream HTTP endpoints, acting as a token relay.
+The `static` site won't care (it's just serving up static `.html` and `.css` files, after all), but the `api` will.
+
+Let's look at the Java code first.
+
+[source,java]
+-----
+include::gateway/src/main/java/bootiful/gateway/SecurityConfiguration.java[]
+-----
+
+<1> you could probably get away with not defining this bean at all _if_ you were willing to deal with default behavior of CSRF tokens, which I am not.
+In the interest of simplicity, I'm disabling them, but in so doing I am also disabling all the other things Spring Security assumed I wanted.
+So we will also go through and re-enable those things.
+<2> We want all HTTP requests to be authenticated...
+<3> ...and to disable the CSRF support...
+<4> ...and to re-enable OAuth 2 OIDC login support and the OAuth 2 client support.
+The OIDC login functionality is what triggers the OAuth dance we've talked about.
+The OAuth 2 client support is what tells Spring Security, running in this process, as which OAuth 2 client requests for OIDC login should be done.
+We'll need to specify the particulars in the property configuration later.
+
+The security configuration is pretty straightforward.
+We're an OAuth client.
+We want to prompt users to login with a particular client.
+Once a user is authenticated, well, there's not much for them to see!
+We need Spring Cloud Gateway to connect our other HTTP services to the user visiting this `gateway` service.
+
+We'll configure two Spring Cloud Gateway _routes_.
+Each request has a predicate, optional filter(s), and a destination URI.
+The predicate defines how requests to the Spring Cloud Gateway service are matched, e.g.: does this request have a particular header or cookie, or a particlar path, or a particular virtual host?
+You may specify one or more filters that act on the incoming requests, changing it.
+Finally, the request, after it has passed through any and all filters, is sent to a final destination, which we specify with a URI.
+
+[source,java]
+-----
+include::gateway/src/main/java/bootiful/gateway/GatewayConfiguration.java[]
+-----
+
+<1> the first route matches all requests to `/api/**`, notes and forwards any OAuth JWTs to the backend service, and changes the path of the request from `gateway:8082/api/foo` to `api:8081/foo`, dropping the `/api/` bit.
+<2> the second route takes every other request and sends it unchecked on to the HTTP endpoint service up the static HTMl 5 and JavaScript assets.
+
+That's just about all the Java code for this service, but its role and importance in the architecture can not be overstated.
+Let's look at the property file that ties it all together.
+
+[source,properties]
+-----
+include::gateway/src/main/resources/application.properties[]
+-----
+
+<1> this process will run on port `8082`.
+<2> it will use the issuer URI to validate JWTs if it detects them
+<3> otherwise it will use this configuration to, acting as a client, inintiate an OIDC login to allow you to come up with a valid token.
+

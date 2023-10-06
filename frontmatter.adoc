@@ -1,0 +1,14 @@
+[[frontmatter]]
+= Frontmatter
+
+_Secure all the things with the Spring Authorization Server_
+by Josh Long
+
+(C) {revyear} {author}. All rights reserved.
+
+ISBN: {isbn}
+Version {revnumber}.
+
+
+
+While the author has used reasonable faith efforts to ensure that the information and instructions in this work are accurate, the author disclaims all responsibility for errors or omissions, including without limitation, responsibility for damages resulting from the use of or reliance on this work. The use of the information and instructions contained in this work is at your own risk. If any code samples or other technology this work contains or describes is subject to open source licenses or the intellectual property rights of others, it is your responsibility to ensure that your use thereof complies with such licenses and/or rights.
