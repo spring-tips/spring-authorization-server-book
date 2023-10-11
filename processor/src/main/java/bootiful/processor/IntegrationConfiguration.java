@@ -1,7 +1,8 @@
 package bootiful.processor;
 
-import org.springframework.amqp.core.*;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.amqp.dsl.Amqp;
@@ -14,16 +15,17 @@ import org.springframework.security.messaging.access.intercept.AuthorizationChan
 import org.springframework.security.messaging.context.SecurityContextChannelInterceptor;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 
-import static bootiful.processor.ProcessorApplication.AUTHORIZATION_HEADER_NAME;
-import static bootiful.processor.ProcessorApplication.RABBITMQ_DESTINATION_NAME;
+import static bootiful.processor.Constants.AUTHORIZATION_HEADER_NAME;
+import static bootiful.processor.Constants.RABBITMQ_DESTINATION_NAME;
 
 @Configuration
 class IntegrationConfiguration {
 
 
+    // <.>
     @Bean
     IntegrationFlow inboundAmqpRequestsIntegrationFlow(
-            MessageChannel requests,
+            @Qualifier(Constants.REQUESTS_MESSAGE_CHANNEL) MessageChannel requests,
             ConnectionFactory connectionFactory) {
         var inboundAmqpAdapter = Amqp
                 .inboundAdapter(connectionFactory, RABBITMQ_DESTINATION_NAME);
@@ -33,42 +35,42 @@ class IntegrationConfiguration {
                 .get();
     }
 
+    // <.>
     @Bean
-    IntegrationFlow requestsIntegrationFlow(MessageChannel requests) {
+    IntegrationFlow requestsIntegrationFlow(
+            @Qualifier(Constants.REQUESTS_MESSAGE_CHANNEL) MessageChannel requests) {
+
+        var log = LoggerFactory.getLogger(getClass());
+
         return IntegrationFlow
                 .from(requests)//
                 .handle((payload, headers) -> {
-                    System.out.println("----------------");
+                    log.info("----");
                     headers.forEach((key, value) ->
-                            System.out.println(key + '=' + value));
+                            log.info(key + '=' + value));
                     return null;
                 })//
                 .get();
     }
 
-    @Bean
+    @Bean(Constants.REQUESTS_MESSAGE_CHANNEL)
     DirectChannelSpec requests(JwtAuthenticationProvider jwtAuthenticationProvider) {
+        // <.>
+        var jwtAuthInterceptor = new JwtAuthenticationInterceptor(
+                AUTHORIZATION_HEADER_NAME, jwtAuthenticationProvider);
+        // <.>
+        var securityContextChannelInterceptor = new SecurityContextChannelInterceptor(
+                AUTHORIZATION_HEADER_NAME);
+        // <.>
+        var authorizationChannelInterceptor = new AuthorizationChannelInterceptor(
+                AuthenticatedAuthorizationManager.authenticated());
         return MessageChannels
                 .direct()
                 .interceptor(
-                        new JwtAuthenticationInterceptor(AUTHORIZATION_HEADER_NAME, jwtAuthenticationProvider),
-                        new SecurityContextChannelInterceptor(AUTHORIZATION_HEADER_NAME),
-                        new AuthorizationChannelInterceptor(AuthenticatedAuthorizationManager.authenticated()));
-    }
-
-    @Bean
-    Queue queue() {
-        return QueueBuilder.durable(RABBITMQ_DESTINATION_NAME).build();
-    }
-
-    @Bean
-    Exchange exchange() {
-        return ExchangeBuilder.directExchange(RABBITMQ_DESTINATION_NAME).build();
-    }
-
-    @Bean
-    Binding binding() {
-        return BindingBuilder.bind(queue()).to(exchange()).with(RABBITMQ_DESTINATION_NAME).noargs();
+                        jwtAuthInterceptor,
+                        securityContextChannelInterceptor,
+                        authorizationChannelInterceptor
+                );
     }
 
 }

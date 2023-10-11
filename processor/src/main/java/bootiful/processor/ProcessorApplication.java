@@ -12,9 +12,6 @@ public class ProcessorApplication {
         SpringApplication.run(ProcessorApplication.class, args);
     }
 
-    public static final String RABBITMQ_DESTINATION_NAME = "emails";
-
-    public static final String AUTHORIZATION_HEADER_NAME = "jwt";
 
 }
 
