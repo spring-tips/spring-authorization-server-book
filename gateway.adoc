@@ -71,21 +71,31 @@ include::gateway/src/main/resources/application.properties[]
 <2> it will use the issuer URI to validate JWTs if it detects them
 <3> otherwise it will use this configuration to, acting as a client, inintiate an OIDC login to allow you to come up with a valid token.
 
-The last several lines are where we tell the OAuth client what it should ask for from our OAuth IDP (the Spring Authorization Server). You'd write similar configuration for any OAuth IDP, not just the Spring Authorization Server. In this example, the client is configured to identify itself as the `crm` client, with `crm` as the client secret. It's being configured to ask for the `authorization_code` authorization grant. It's being configured to instruct the OAuth IDP to rediect _back_ to the gateway, with a special pseudo URL syntax: `{baseUrl}/login/oauth2/code/{registrationId}`. Spring Security will set that endpoint up for us on the gateway, so there's nothing we need to do for that to work. Finally, the OAuth client asks for certain permissions: `user.read` and `openid`.
+The last several lines are where we tell the OAuth client what it should ask for from our OAuth IDP (the Spring Authorization Server).
+You'd write similar configuration for any OAuth IDP, not just the Spring Authorization Server.
+In this example, the client is configured to identify itself as the `crm` client, with `crm` as the client secret.
+It's being configured to ask for the `authorization_code` authorization grant.
+It's being configured to instruct the OAuth IDP to rediect _back_ to the gateway, with a special pseudo URL syntax: `{baseUrl}/login/oauth2/code/{registrationId}`.
+Spring Security will set that endpoint up for us on the gateway, so there's nothing we need to do for that to work.
+Finally, the OAuth client asks for certain permissions: `user.read` and `openid`.
 
 == A User Interface for a Browser User
 
-The OAuth client is where all outside visitors will begin their journey. But obviously, they're not going to be issuing HTTP requests with `curl` , they're going to be expecting some sort of user interface.  We looked at how Spring Cloud Gateway requests will route proxied resources: `/api/**` to our backend `api` and everything else to the static HTML5 and JavaScript code. In this case, it's just running on our local machines, but one images this stuff would be deployed to a CDN and made available locally in a real production application.
+The OAuth client is where all outside visitors will begin their journey.
+But obviously, they're not going to be issuing HTTP requests with `curl` , they're going to be expecting some sort of user interface.
+We looked at how Spring Cloud Gateway requests will route proxied resources: `/api/**` to our backend `api` and everything else to the static HTML5 and JavaScript code.
+In this case, it's just running on our local machines, but one images this stuff would be deployed to a CDN and made available locally in a real production application.
 
-In order to keep things as simple as possible, I've written a snigle page `.html` application with a smattering - a pinch, a dash, even! - of JavaScript. The concepts will be the same whether you eventually use Vue.js, React, Angular, jQuery, or whatever other thing you decide to use.
+In order to keep things as simple as possible, I've written a snigle page `.html` application with a smattering - a pinch, a dash, even! - of JavaScript.
+The concepts will be the same whether you eventually use Vue.js, React, Angular, jQuery, or whatever other thing you decide to use.
 
-Here's the `.html` file. It has a panel to greet the signed in user and another to show a grid of `customer` records.
+Here's the `.html` file.
+It has a panel to greet the signed in user and another to show a grid of `customer` records.
 
 [source,html]
 ----
 include::static/index.html[]
 ----
-
 
 Both the user name and the `customer` records we'll load by talking to the API from JavaScript.
 
@@ -93,15 +103,28 @@ Both the user name and the `customer` records we'll load by talking to the API f
 ----
 include::static/app.js[]
 ----
-<.> the first two functions of the file do the work of interacting with our API using the non-blocking, but oh-so-verbose, `async`/`await` syntax. (If only JavaScript had Java 21's Project Loom and virtual threads!). NB: we're making these requests relative to the `/api` path. We've written the JavaScript code in such a way that it knows that it's being accessed via an HTTP proxy, our Spring Cloud Gateway gateway.
-<.> this function is a little more interesting in that we're also interacting with the backend API but we're sending `POST` calls, not `GET` calls. And of course we've got a little animation goin' on.
-<.> there are at least two separate places that I need the `id` that'll have been assigned to a `div` for records for a particular `customer`. So I've  extracted it into a sepearate function here.
-<.> this is the heart of the code: when the page loads, we read the data for the customers and the user's name and then draw the page with some DOM manipulation. This code also wires up an event so that when you click on one of the rendered buttons, it triggers a `POST` which initiates a message sent to RabbitMQ.
 
-I love this code, not because of the JavaScript (bleargh!), but because it's so plain to understand. Remember, this code will run in a browser that has cookies associated with an HTTP session, and that HTTP session in turn  is connected with a valid OAuth token. So each time the JavaScript code calls `/api/customers`, it's implicitly sending the associated cookie to the gateway code, which in turn then allows the gateway to find the OAuth session associated with this user and to then forward the token to the backend `api`.
+<.> the first two functions of the file do the work of interacting with our API using the non-blocking, but oh-so-verbose, `async`/`await` syntax.
+(If only JavaScript had Java 21's Project Loom and virtual threads!).
+NB: we're making these requests relative to the `/api` path.
+We've written the JavaScript code in such a way that it knows that it's being accessed via an HTTP proxy, our Spring Cloud Gateway gateway.
+<.> this function is a little more interesting in that we're also interacting with the backend API but we're sending `POST` calls, not `GET` calls.
+And of course we've got a little animation goin' on.
+<.> there are at least two separate places that I need the `id` that'll have been assigned to a `div` for records for a particular `customer`.
+So I've extracted it into a sepearate function here.
+<.> this is the heart of the code: when the page loads, we read the data for the customers and the user's name and then draw the page with some DOM manipulation.
+This code also wires up an event so that when you click on one of the rendered buttons, it triggers a `POST` which initiates a message sent to RabbitMQ.
 
-At no point does the JavaScript code ever see your username and password. And, in this case, it doesn't even see your JWT! Indeed the code is written in such a way that it doesn't even know OAuth is involved. Which is nice. now you can develop the application without OAuth, get it working, then add the OAuth resource server and OAuth client support to the backend  code and call it done.
+I love this code, not because of the JavaScript (bleargh!), but because it's so plain to understand.
+Remember, this code will run in a browser that has cookies associated with an HTTP session, and that HTTP session in turn is connected with a valid OAuth token.
+So each time the JavaScript code calls `/api/customers`, it's implicitly sending the associated cookie to the gateway code, which in turn then allows the gateway to find the OAuth session associated with this user and to then forward the token to the backend `api`.
 
-Remember, the user visiting the HTML page won't even see any of this markup unless they've authenticated. They'll be redirected away before they ever get a chance. So not only is this page completely unaware of security, it doesn't need to be.
+At no point does the JavaScript code ever see your username and password.
+And, in this case, it doesn't even see your JWT!
+The code is written in such a way that it doesn't even know OAuth is involved.
+Now you can develop the application without OAuth, get it working, then add the OAuth resource server and OAuth client support to the backend code and call it done.
 
+Remember, the user visiting the HTML page won't even see any of this markup unless they've authenticated.
+They'll be redirected away before they ever get a chance.
+This page is both completely and blissfully unaware of any security, and it doesn't need to be aware of security.
 

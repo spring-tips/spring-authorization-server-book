@@ -14,7 +14,6 @@ If you've ever clicked on a "Log in with Facebook" or "Log in with Google" or "L
 Instead of creating a new username and password for that website, you’re granting it permission to access a certain piece of information from platforms like Facebook, Google, or Apple, respectively.
 That information is usually just enough identity information to be able to put together a profile so that the service you're logging in to knows what to call you and how to correlate and associate requests with you.
 
-// todo i need to fix everything after this!!
 == Why is OAuth used?
 
 Before OAuth, user data was accessed by third-party apps in an cumbersome and insecure way: the user would have had to provide their own username and password to every application, meaning the application had full access to the account.

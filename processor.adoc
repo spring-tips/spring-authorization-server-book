@@ -2,3 +2,32 @@
 
 // in this section we'll look at how to use OAuth to secure a headless backoffice process
 // the approach we'll take could be easily applied to other contexts, like Spring's WebSocket support using the `BeforeSocketHandshakeInterceptor`
+
+This chapter is my favorite one. Not because it's going to be the most useful - certainly not - but because it's the one that took the longest for me to figure out. You see, I love backoffice code. I love messaging, and integration. I lvoe analytics. I love workflow. I love stream and batch processing. I love workflow engines and business process management. I love grid computing. I love short-lived tasks like CRON jobs. I love all the sorts of stuff that has no business being anywhere near an HTTP request or taking up space on an HTTP webservice. We used to call these sorts of things "backoffice" jobs. And you've probably built some of these in your career, too.
+
+And I didn't know how OAuth fit in this world of backoffice code. I mean, just look at the Spring portfolio! We've got Spring Integration, Spring AMQP, Spring for Apache Kafka, Spring Cloud Data Flow, Spring Cloud Task, Spring Batch, and even Spring Shell. You can build all sorts of cool stuff with those libraries and never see an HTTP header! So how does OAuth fit here? And, more precisely, how does Spring Security's OAuth support plugin? We've already met the usual suspects: `spring-boot-starter-oauth-client`, `spring-boot-starter-resource-server`, etc. But those all assume the presence of an HTTP server and the Spring Security web filter chain.
+
+In this chapter we're going to expand our sample application a bit with some Spring Integration code that will receive a message that the API (the resource server) will send. Each message will contain the JWT token associated with the authenticated user and it'll contain a payload tat the processor will.., you know, process. In this example, we'll imagine that this processor is busy doing the work of sending emails. We're not going to actually write that bit of the code. But it is a good example. After all, sending email can sometimes take a long time and we don't want to keep the API busy doing this when it should be fielding HTTP requests.
+
+When the message arrives at this `processor` module, we'll validate the JWT token by talking to the Spring Authorization Server (our OAuth IDP) through its issuer URI. Does this sort of sound familiar? It should! We're going to basically do the same trick as the resource server  did, albeit a bit more granuarly. Well get to see how the resource server support does some of its work. Its good to know this because, outside of an HTTP environment, there's no one-sized fits all approach. It's convenient then that we can easily plug this stuff in ourselves.
+
+== (Re-) Introducing Spring Integration
+
+Ok, before we can get too far down the line let's talk again about Spring Integration. we looked at it ever so briefly when we introduced the API, but let's review.
+
+Remember this code from the API?
+
+[source,java]
+----
+include::api/src/main/java/bootiful/api/EmailRequestsIntegrationFlowConfiguration.java[]
+----
+
+It's a bean of type `IntegrationFlow`, from the Spring Integration project. Spring Integration is an old project, from 2007. The core conceit fo Spring Integration is that as we move forward in time the body of systems and services with which we need to integrate - to maximally retain value - grows, and the protocols and paradigms required for integration also grow. Spring Integration is an enterprise application technnology. It's designed to help glue systems together, particularly those things that wouldn't otherwise know about and work with each other.
+
+In 2004, Gregor Hohpe and Bobby Woolf wrote the book  https://enterpriseintegrationpatterns.com[_Enterprise Integration Patterns_], which gave us the names for the patterns typical of integration solutions. Broadly, the book said, there are four different kinds of integration styles.
+
+* **RPC**: in this style, network services are made to work like a local object. In such a style, a client could invoke a method on a local Java object and have that translated into remote procedure calls on another object on another object, presumably running on another host. This style feels simple but it hides the reality of the network - that it will fail. It also makes assumptions that it shouldn't, namely that the service will always be available. Because of these design tradeoffs, RPC is a poor choice for service integration.
+
+* **Shared Database**: in this style, a client connects the same database (e.g.: Oracle, PostgreSQL, MongoDB, etc), writes data there that another client then reads. This is fragile because a schema change by one client might break another client. This approach completely violates the principles of encapsulation, and is therefore a poor choice for service integration.
+
+* **File synchronization**: in this style, a client deposits a file on a filesystem (NFS, FTP, FTPS, SFTP, SMB, etc.) that a client then consumes. This approach works alright but only if
