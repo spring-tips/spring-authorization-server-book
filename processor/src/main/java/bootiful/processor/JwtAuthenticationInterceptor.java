@@ -12,8 +12,10 @@ import org.springframework.util.Assert;
 
 class JwtAuthenticationInterceptor implements ChannelInterceptor {
 
+    // <.>
     private final JwtAuthenticationProvider authenticationProvider;
 
+    // <.>
     private final String headerName;
 
     JwtAuthenticationInterceptor(String headerName, JwtAuthenticationProvider ap) {
@@ -23,10 +25,15 @@ class JwtAuthenticationInterceptor implements ChannelInterceptor {
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
+        // <.>
         var token = (String) message.getHeaders().get(headerName);
         Assert.hasText(token, "the token must be non-empty!");
+
+        // <.>
         var authentication = this.authenticationProvider
                 .authenticate(new BearerTokenAuthenticationToken(token));
+
+        // <.>
         if (authentication != null && authentication.isAuthenticated()) {
             var upt =
                     UsernamePasswordAuthenticationToken.authenticated(authentication.getName(),
@@ -36,6 +43,8 @@ class JwtAuthenticationInterceptor implements ChannelInterceptor {
                     .setHeader(headerName, upt)
                     .build();
         }
+
+        // <.>
         return MessageBuilder
                 .fromMessage(message)
                 .setHeader(headerName, null)

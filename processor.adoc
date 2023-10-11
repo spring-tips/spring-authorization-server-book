@@ -129,11 +129,38 @@ include::processor/src/main/java/bootiful/processor/Constants.java[]
 
 Now we're into the meat of the example, the actual Spring Integration code.
 
-In Spring Integration, an `IntegrationFlow` is the definition of a processing pipeline. You may have more than one  `IntegrationFlow` in your application. `IntegrationFlow` objects   chain together different components that act on the `Message` objects within the flow. You can route messages from one `IntegrationFlow` to another using `MessageChannel` instances. In our program, we have one flow that accepts messages from RabbitMQ and then sends it into a channel. Remmeber, `MessageChannel` objects are like pipes: messages go in and they come out? So why bother? Why not just chain together the inbound adapte from the first `IntegrationFlow` and the
+In Spring Integration, an `IntegrationFlow` is the definition of a processing pipeline. You may have more than one  `IntegrationFlow` in your application. `IntegrationFlow` objects   chain together different components that act on the `Message` objects within the flow. You can route messages from one `IntegrationFlow` to another using `MessageChannel` instances.
+
+Conceptually, all we want to do is take a message from the inbound AMQP (that's the protocol that RabbitMQ speaks) in and then print out the message.  One might send an email or do something useful here, but we'll leave that as an exercise for another day... And yet, I've written it a little more obtusely: we have one `IntegrationFlow` that takes the message rom AMQP and then stuffs the message into a `MessageChannel`. It pops out the other side and _then_ we print out the message's payload and headers. Why the indirection? Why add the `MessageChannel` into the mix, I hear you query. `MessageChannel` objects can have interceptors that can, in effect, _veto_ messages. So we'll configure some interceptors to act on the message, validate the attached JWT token, and if it doesn't match, to reject the message _before_ it gets to whatever important business logic we've got downstream of thee `MessageChannel`.
+
+Let's see it all in action.
+
+
 
 [source,java]
 ----
 include::processor/src/main/java/bootiful/processor/IntegrationConfiguration.java[]
 ----
-<.>
+<.> the first `IntegrationFlow` defines an AMQP Inbound adapter which listens  for new `Messages` on our auto configured RabbitMQ connection. As soon as a message comes in, it gets sent to the next step in the `INtegrationFlow`. IN this case, that next step is to travel through an injected `MessageChannel` to another `IntegrationFlow`.
+<.> the second `IntegrationFlow` takes whatevers been stuffed into the `MessageChannel` and passews it to the next step, which is a simple handler that inspects the message payload and headers.
+<.> both `IntegrationFlow` objects are connected by the `MessageChannel` whoe bean ID is `Constants.REQUESTS_MESSAGE_CHANNEL`, and whose definition we see here. It's a bit complicated but this is where we do the work of validating the JWT token.
+<.> most of the important woerk is done in these interceptors. Each interceptr can inspect, transform, or reject the `Message` objects flowign through the `MessageChannel` on which they're configured. I wrote this first interceptor. We'll look at it shortyl, but suffice it to say that it in turn is using the injected `JwtAuthenticationProvider` that is provided by Spring Security and whose configuration we'll examine momentarily to do the work of validating the JWT token against the Spring Authorization Server. If the token is valid, the interceptor creates a new message with a valid Spring Security `Authentication` in the header. If the token is not valid, then the interceptor will create a new message with a null value for the header.
+<.> this next interceptor hoists the `Authentication` from the message header and puts it into the Spring Security `SecurityContextHolder`, which is a well-known `ThreadLocal`-like holder of the current thread's authenticated user. Now, all the other machinery in Spring Security that consults this thread local will work correctly.
+<.> the final interceptor does the actual check, rejecting the message if the current thread doesn't have a valid, authenticated `Authentication`.
+
+The `JwtAuthenticationInterceptor` leaves nothing to the imagination:
+
+[source,java]
+----
+include::processor/src/main/java/bootiful/processor/JwtAuthenticationInterceptor.java[]
+----
+<.> We've defined this bean elsewhere and injected it here
+<.> in which header shall we place the authentication once we've validated the token?
+<.> extract the token from the header
+<.> use the `AuthenticationProvider` to talk to the Spring Authorizatoin Server.
+<.> if the JWT is in fact valid then we'll create a new `Message`, cloning the headers and payload from the incoming message, but specufying one new header, whose value is an object of type `Authentication`.
+<.> if the JWT is not valid, then create a new `Message` with a null header value.
+
+
+
 

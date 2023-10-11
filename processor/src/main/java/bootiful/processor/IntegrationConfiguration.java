@@ -53,6 +53,7 @@ class IntegrationConfiguration {
                 .get();
     }
 
+    // <.>
     @Bean(Constants.REQUESTS_MESSAGE_CHANNEL)
     DirectChannelSpec requests(JwtAuthenticationProvider jwtAuthenticationProvider) {
         // <.>
