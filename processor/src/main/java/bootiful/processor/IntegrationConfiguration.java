@@ -46,8 +46,7 @@ class IntegrationConfiguration {
                 .from(requests)//
                 .handle((payload, headers) -> {
                     log.info("----");
-                    headers.forEach((key, value) ->
-                            log.info(key + '=' + value));
+                    headers.forEach((key, value) -> log.info("{}={}", key, value));
                     return null;
                 })//
                 .get();
