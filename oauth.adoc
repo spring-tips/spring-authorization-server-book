@@ -2,6 +2,26 @@
 
 OAuth is an open standard for access delegation that is commonly used to grant websites or applications access to information on other websites but without giving them the passwords.
 This allows users to permit third-party applications to access their data without sharing their credentials.
+You've seen it in action many times.
+Let's say you want to access your email from an AI chat app.
+You'll select, say, the GMail connector.
+When you click the button to add it, you're redirected to a web broswer that goes to a login page at Google, or just an authorization page.
+These pages can be a bit scary: YOU ARE ABOUT TO GRANT ACCESS TO YOUR ENTIRE LIFE! they often scream.
+Stay calm, you hold much power in your hands and OAuth is making sure it is wielded responsibly.
+This page is called [TK whatever it's called] and it will allow you to grant very fine grained access to the service, here, your email.
+Want to restrict access to just reading your email, but not sending it?
+Maybe you only want to provide access to your name and email, possibly also your profile picture.
+OAuth handles all of that.
+
+The wide industry and commuity use of OAuth is what makes it powerful and useful.
+There are many security schemes for granting authentication and authorization, but very few of them have the near universal usage of OAuth.
+If there's a service out there that you want to use, chances are it works with OAuth.
+
+This is why understanding how to use OAuth is, we'd argue, required for any software developer.
+Securing access to your applications _and_ securely using other applications is a universal need - at least, it should be!
+And OAuth is the way to do it.
+
+So, let's get into it.
 
 ==  What is OAuth?
 
@@ -9,6 +29,7 @@ OAuth (Open Authorization) is a protocol that lets applications securely act on 
 Think of it like a valet key for the internet.
 It provides a way for users to grant third-party apps limited access to their resources, either on a temporary or permanent basis, without revealing their credentials, in the same way that a car's valet key allows the valet to drive the car, but does not permit access to the secured, locked compartments of the vehicle like the glovebox or the trunk (or boot).
 
+// cote: I'd move this explanation to the top as I did in my rewrite above
 You have probably used OAuth before!
 If you've ever clicked on a "Log in with Facebook" or "Log in with Google" or "Log in with Apple" button on a website, you were probably using OAuth.
 Instead of creating a new username and password for that website, you’re granting it permission to access a certain piece of information from platforms like Facebook, Google, or Apple, respectively.
@@ -16,27 +37,34 @@ That information is usually just enough identity information to be able to put t
 
 == Why is OAuth used?
 
-Before OAuth, user data was accessed by third-party apps in an cumbersome and insecure way: the user would have had to provide their own username and password to every application, meaning the application had full access to the account.
-Ideally, every service into which you authenticated was doing the right thing and fully encrypting your credentials, but if even one of them wasn't then your password is vulnerable should that service ever be hacked.
+Before OAuth, user data was accessed by third-party apps in a cumbersome and insecure way: the user had to give their username and password to every application, meaning the application had full access to the account.
+You were trusting all of those services with your username and password, spreading it around the Internet in plaintext.
 
 This arrangement poses a security risk.
 It's also annoying: you'd have to get in the business of coming up with and maintaining passwords for every site you visit.
+// cote: I'd cut this. I think every reader will _get it_.
 Sites don't want your password, they want to know who they're dealing with! There's a difference. Passwords just create more work for everyone. As a person using the internet, there are slightly better tools available today than ye 'ole Google Doc with all your passwords, tools like LastPass, 1Password, etc., but they're bandaids on the real problem: you've got too many passwords to maintain.
 
-Most sites would be very happy to outsource the work of validating that you are who you say you are, and focusing on selling you stuff, presenting you stuff, or whatever else it is those sites did.
-OAuth lets them get out of that business.
+The applications and websites also don't like this arrangement becaause handling secuity is a tough job and gives them responsiblity they don't want to take on.
+Instead, sites would be very happy to outsource the work of validating that you are who you say you are, and focusing on selling you stuff, paying your taxes, or whatever else it is those sites do.
+OAuth lets these sites get out of the security business and get onto the series business of sharing a photograph of the last sandwhich you ate.
 
 OAuth introduced a way to provide tokens instead of credentials, granting limited access to the user's data.
+// cote: tk make sure we explain "tokens" soon.
+// cote: tk an activity diagram of an OAuth flow would be helpful here.
 If an attacker steals the token, they would only have access for a limited time and only to the data to which their token was entitled.
 This entitlement is called a _scope_.
 
 There are many scenarios where it makes sense to use OAuth.
 
-* Third-party applications and services: applications that want to access services like Google Drive, Twitter feeds, or Facebook posts.
+// cote: astricks for bullet points! This is like paisley wallpaper. Fine for the bathroom foyer at chic restuarnts that serve "small plates"... :)
+* Third-party applications and services: applications that want to access services like Google Drive, Mastodon feeds, or github repos.
 * Mobile Applications: smartphone applications that access web services but don’t want to store passwords.
 * Content Aggregation: an app that pulls data from multiple sources (e.g., various email accounts).
-* Federation: if you want need to maintain secure integrations with a number of OAuth platforms, it's possible to use an OAuth IDP like Spring Authorization Server to act as a facade.
+// cote: too big of mental jump to go into federation here? Maybe put that in its own paragraph? after the list "There's also the managing of OAuth itself. For example..."
+* Federation: if you need to maintain secure integrations with a number of OAuth platforms, it's possible to use an OAuth IDP like Spring Authorization Server to act as a facade.
 
+// cote: we can cut this section since we covered it above.
 == OAuth is a big Improvement
 
 Before OAuth came onto the scene, the most common method of granting third-party applications access was by sharing usernames and passwords.
@@ -45,13 +73,14 @@ This posed a series of challenges:
 
 * Security: sharing your actual password with third parties is inherently risky.
 * Full Access: third-party apps would have full access to a user's account.
+// cote: revocation is a good thing to point out, make sure it's covered as a benefit somewhere, even demo'ed.
 * Revocation: if a user wanted to stop an app from accessing their data, the only way was to change their password.
 
 OAuth changed this by not requiring users to share their passwords, letting users specify what data the application can access (scope), and providing a way to revoke access without changing user passwords.
 
 == Evolution of OAuth:
 
-OAuth has evolved over the years to address shortcomings and to better meet the requirements of developers and organizations.
+OAuth has evolved over the years to address initial shortcomings and to better meet the requirements of developers and organizations.
 There are two main versions of OAuth:
 
 **OAuth 1.0**: The initial version, published in 2010. It was complex and required cryptographic signatures.
